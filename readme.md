@@ -7,7 +7,7 @@ Tested up to: 6.3\
 Requires PHP: 7.4\
 Stable tag: 1.1\
 License: MIT\
-License URI: https://mit-license.org/
+License URI: <https://mit-license.org/>
 
 ## Description
 
