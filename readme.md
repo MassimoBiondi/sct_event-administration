@@ -49,7 +49,7 @@ Installation
 ## Changelog
 
 - 1.0
-  - Initial release.
+  - Initial release - 2024/11/29
 
 - 1.1
   - get_default_confirmation_template changed to return correct eamil template
