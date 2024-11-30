@@ -5,7 +5,7 @@ Tags: events, events, event registration, event admin\
 Requires at least: 5.0\
 Tested up to: 6.3\
 Requires PHP: 7.4\
-Stable tag: 1.1\
+Stable tag: 1.2\
 License: MIT\
 License URI: <https://mit-license.org/>
 
@@ -34,6 +34,11 @@ Frontend Features:
 
 - Shortcodes for displaying event lists and registration forms on the front-end.
 - AJAX-powered registration handling for improved user experience.
+
+Shortcodes:
+
+- [event_list] show all events
+- [event_list limit="1"] show exacly one event
 
 ## Installation
 

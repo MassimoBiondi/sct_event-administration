@@ -45,12 +45,28 @@ class EventPublic {
 
     public function render_events_list($atts) {
         global $wpdb;
+
+        // Parse attributes with defaults
+        $atts = shortcode_atts(array(
+            'limit' => null, // Default to null for all events
+        ), $atts);
+
+        // Build the query
+        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE event_date >= CURDATE() ORDER BY event_date ASC";
         
-        $events = $wpdb->get_results(
-            "SELECT * FROM {$wpdb->prefix}sct_events 
-             WHERE event_date >= CURDATE() 
-             ORDER BY event_date ASC"
-        );
+        // Add LIMIT clause if limit parameter is set and is a positive number
+        if (!is_null($atts['limit']) && is_numeric($atts['limit']) && $atts['limit'] > 0) {
+            $query .= $wpdb->prepare(" LIMIT %d", intval($atts['limit']));
+        }
+        
+        // Get events
+        $events = $wpdb->get_results($query);
+        
+        // $events = $wpdb->get_results(
+        //     "SELECT * FROM {$wpdb->prefix}sct_events 
+        //      WHERE event_date >= CURDATE() 
+        //      ORDER BY event_date ASC"
+        // );
         
         // Get the registration page ID from settings
         $registration_page_id = get_option('event_admin_settings', [])["event_registration_page"];
