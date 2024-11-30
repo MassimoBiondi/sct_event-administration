@@ -35,6 +35,8 @@ Frontend Features:
 - Shortcodes for displaying event lists and registration forms on the front-end.
 - AJAX-powered registration handling for improved user experience.
 
+## Usage
+
 Shortcodes:
 
 - [event_list] show all events
@@ -58,3 +60,6 @@ Installation
 
 - 1.1
   - get_default_confirmation_template changed to return correct eamil template
+
+- 1.2
+  - added LIMIT parameter to the shortcode "event_list" to control how many events are diaplayed in the list
