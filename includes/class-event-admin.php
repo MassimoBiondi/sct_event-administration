@@ -500,15 +500,33 @@ class EventAdmin {
         }
     
         global $wpdb;
-        
+        $event_id = intval($_POST['event_id']);
+        $sct_settings = get_option('event_admin_settings', array(
+            'event_registration_page' => get_option('event_registration_page'),
+            'admin_email' => get_option('admin_email'),
+            'notification_subject' => 'New Event Registration: {event_name}',
+            'notification_template' => $this->get_default_notification_template(),
+            'confirmation_subject' => 'Registration Confirmation: {event_name}',
+            'confirmation_template' => $this->get_default_confirmation_template()
+        ));
+
+        $event_data = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $event_id
+        ));
+
         $subject = sanitize_text_field($_POST['email_subject']);
         $body_template = wp_kses_post($_POST['email_body']);
         $is_mass_email = isset($_POST['is_mass_email']) && $_POST['is_mass_email'] === '1';
+
+        $admin_email = !empty($event_data['admin_email']) ? 
+            $event_data['admin_email'] : 
+            $sct_settings['admin_email'] ;
         
         // Set up base email headers
         $headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
         );
     
         $success_count = 0;
@@ -517,7 +535,6 @@ class EventAdmin {
     
         if ($is_mass_email) {
             // Get all registrants for the event
-            $event_id = intval($_POST['event_id']);
             error_log("Event ID: " . $event_id);
             $registrations = $wpdb->get_results($wpdb->prepare(
                 "SELECT r.*, e.*, r.id as registration_id

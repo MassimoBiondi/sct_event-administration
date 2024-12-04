@@ -294,20 +294,32 @@ class EventPublic {
     
     private function send_registration_emails($registration_data, $event_data) {
         $sct_settings = get_option('event_admin_settings', array(
-            // 'admin_email' => get_option('admin_email'),
+            'admin_email' => get_option('admin_email'),
             'notification_subject' => 'New Event Registration: {event_name}',
             'notification_template' => $this->get_default_notification_template(),
             'confirmation_subject' => 'Registration Confirmation: {event_name}',
             'confirmation_template' => $this->get_default_confirmation_template()
         ));
         
+        // global $wpdb;
+        // $event_data = $wpdb->get_row($wpdb->prepare(
+        //     "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+        //     $event_id
+        // ));
+
+        // global $wpdb;
+        // $event = $wpdb->get_row($wpdb->prepare(
+        //     "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+        //     intval($_GET['id'])
+        // ));
+
         // Prepare data for placeholder replacement
         $placeholder_data = array_merge($registration_data, $event_data);
 
         // Use event's admin email, fallback to WordPress admin email if not set
         $admin_email = !empty($event_data['admin_email']) ? 
-        $event_data['admin_email'] : 
-        get_option('admin_email');
+            $event_data['admin_email'] : 
+            $sct_settings['admin_email'];
         
         // Send admin notification
         $admin_subject = $this->replace_email_placeholders(
@@ -321,7 +333,7 @@ class EventPublic {
     
         $admin_headers = array(
             'Content-Type: text/plain; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
         );
     
         $admin_sent = wp_mail(
@@ -347,7 +359,7 @@ class EventPublic {
     
         $confirmation_headers = array(
             'Content-Type: text/plain; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
         );
     
         $confirmation_sent = wp_mail(
