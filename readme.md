@@ -5,7 +5,7 @@ Tags: events, events, event registration, event admin\
 Requires at least: 5.0\
 Tested up to: 6.3\
 Requires PHP: 7.4\
-Stable tag: 1.2\
+Stable tag: 1.5\
 License: MIT\
 License URI: <https://mit-license.org/>
 
@@ -69,3 +69,8 @@ Installation
 
 - 1.4
   - another Email fix. Added 'Reply To' adress in order to satisfy the wp_mail restrictions on sending email from 3rd party domain
+
+- 1.5
+  - added reply to address instead of from addres in Emails
+  - fixed display field in Edit Event dialog
+  - added organizer email address to event list
