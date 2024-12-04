@@ -301,17 +301,17 @@ class EventPublic {
             'confirmation_template' => $this->get_default_confirmation_template()
         ));
         
-        // global $wpdb;
-        // $event_data = $wpdb->get_row($wpdb->prepare(
-        //     "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
-        //     $event_id
-        // ));
+        global $wpdb;
+        $event_data = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $event_id
+        ));
 
-        // global $wpdb;
-        // $event = $wpdb->get_row($wpdb->prepare(
-        //     "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
-        //     intval($_GET['id'])
-        // ));
+        global $wpdb;
+        $event = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            intval($_GET['id'])
+        ));
 
         // Prepare data for placeholder replacement
         $placeholder_data = array_merge($registration_data, $event_data);
@@ -331,9 +331,19 @@ class EventPublic {
             $placeholder_data
         );
     
+        // Get the full URL from WordPress
+        $blog_url = get_bloginfo('url');
+
+        // Parse the URL to get its components
+        $parsed_url = parse_url($blog_url);
+
+        // Get just the host (domain name)
+        $domain = $parsed_url['host'];
+
         $admin_headers = array(
-            'Content-Type: text/plain; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
+            'Reply-To: ' . $admin_email
         );
     
         $admin_sent = wp_mail(
@@ -358,8 +368,9 @@ class EventPublic {
         );
     
         $confirmation_headers = array(
-            'Content-Type: text/plain; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
+            'Reply-To: ' . $admin_email
         );
     
         $confirmation_sent = wp_mail(

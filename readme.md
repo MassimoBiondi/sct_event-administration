@@ -66,3 +66,6 @@ Installation
   
 - 1.3
   - fixed correct Email address for confiration and registration emails
+
+- 1.4
+  - another Email fix. Added 'Reply To' adress in order to satisfy the wp_mail restrictions on sending email from 3rd party domain

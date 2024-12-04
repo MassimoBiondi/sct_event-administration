@@ -523,10 +523,21 @@ class EventAdmin {
             $event_data['admin_email'] : 
             $sct_settings['admin_email'] ;
         
+
+        // Get the full URL from WordPress
+        $blog_url = get_bloginfo('url');
+
+        // Parse the URL to get its components
+        $parsed_url = parse_url($blog_url);
+
+        // Get just the host (domain name)
+        $domain = $parsed_url['host'];
+
         // Set up base email headers
         $headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>'
+            'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
+            'Reply-To: ' . $admin_email
         );
     
         $success_count = 0;
