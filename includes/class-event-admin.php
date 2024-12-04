@@ -533,9 +533,17 @@ class EventAdmin {
         // Get just the host (domain name)
         $domain = $parsed_url['host'];
 
+        // Remove any server name prefix (including www)
+        $domain = preg_replace('/^.*?([^.]+\.[^.]+)$/', '$1', $domain);
+
+
+        if (strpos($domain, '.') === false) {
+            $domain .= '.qq';
+        }
+
         // Set up base email headers
         $headers = array(
-            'Content-Type: text/html; charset=UTF-8',
+            'Content-Type: text/plain; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
             'Reply-To: ' . $admin_email
         );
@@ -981,7 +989,7 @@ class EventAdmin {
             }
 
             // Send the email
-            $headers = array('Content-Type: text/html; charset=UTF-8');
+            $headers = array('Content-Type: text/plain; charset=UTF-8');
             $sent = wp_mail($email, $email_subject, $email_template, $headers);
 
             if (!$sent) {

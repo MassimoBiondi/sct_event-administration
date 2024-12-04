@@ -301,11 +301,11 @@ class EventPublic {
             'confirmation_template' => $this->get_default_confirmation_template()
         ));
         
-        global $wpdb;
-        $event_data = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
-            $event_id
-        ));
+        // global $wpdb;
+        // $event_data = $wpdb->get_row($wpdb->prepare(
+        //     "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+        //     $event_id
+        // ));
 
         global $wpdb;
         $event = $wpdb->get_row($wpdb->prepare(
@@ -340,14 +340,20 @@ class EventPublic {
         // Get just the host (domain name)
         $domain = $parsed_url['host'];
 
+        // Remove any server name prefix (including www)
+        $domain = preg_replace('/^.*?([^.]+\.[^.]+)$/', '$1', $domain);
+
+        if (strpos($domain, '.') === false) {
+            $domain .= '.qq';
+        }
+
         $admin_headers = array(
-            'Content-Type: text/html; charset=UTF-8',
+            'Content-Type: text/plain; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
             'Reply-To: ' . $admin_email
         );
     
         $admin_sent = wp_mail(
-            // $sct_settings['admin_email'], 
             $admin_email,
             $admin_subject, 
             $admin_message,
@@ -368,7 +374,7 @@ class EventPublic {
         );
     
         $confirmation_headers = array(
-            'Content-Type: text/html; charset=UTF-8',
+            'Content-Type: text/plain; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <events@' . $domain . '>',
             'Reply-To: ' . $admin_email
         );

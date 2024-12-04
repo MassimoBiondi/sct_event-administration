@@ -23,6 +23,7 @@
                 <th class="collapse column-small">Registered</th>
                 <th class="collapse column-small">Available</th>
                 <th class="collapse column-small">Max Guest / Registration</th>
+                <th class="collapse column-small">Organizer</th>
                 <th></th>
             </tr>
         </thead>
@@ -71,6 +72,7 @@
                         ?>
                     </td>
                     <td><?php echo esc_html($event->max_guests_per_registration > 0 ? $event->max_guests_per_registration : 'Unlimited');?></td>
+                    <td><?php echo esc_html($event->admin_email);?></td>
                     <td>
                         <a href="<?php echo admin_url('admin.php?page=event-admin-new&action=edit&id=' . $event->id); ?>" 
                            class="button button-small">

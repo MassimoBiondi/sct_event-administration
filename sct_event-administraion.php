@@ -107,7 +107,7 @@ register_activation_hook(__FILE__, 'event_admin_activate');
 // Load required files
 require_once EVENT_ADMIN_PATH . 'includes/class-event-admin.php';
 require_once EVENT_ADMIN_PATH . 'includes/class-event-public.php';
-require_once EVENT_ADMIN_PATH . 'includes/class-email-handler.php';
+// require_once EVENT_ADMIN_PATH . 'includes/class-email-handler.php';
 
 // Initialize the plugin
 function event_admin_init() {

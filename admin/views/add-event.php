@@ -125,7 +125,7 @@
                            id="admin_email" 
                            name="admin_email" 
                            class="regular-text"
-                           value="<?php echo $sct_settings['admin_email'] ? esc_attr($sct_settings['admin_email']) : get_bloginfo('admin_email'); ?>"
+                           value="<?php echo $event->admin_email ? esc_attr($event->admin_email) : get_bloginfo('admin_email'); ?>"
                            required>
                 </td>
             </tr>
