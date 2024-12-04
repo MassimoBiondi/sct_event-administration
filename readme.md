@@ -63,3 +63,6 @@ Installation
 
 - 1.2
   - added LIMIT parameter to the shortcode "event_list" to control how many events are diaplayed in the list
+  
+- 1.3
+  - fixed correct Email address for confiration and registration emails
