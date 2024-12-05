@@ -17,7 +17,7 @@ class EventAdmin {
         add_menu_page(
             'Event Administration',
             'Events',
-            'manage_options',
+            'edit_posts',
             'event-admin',
             array($this, 'display_events_list_page'),
             'dashicons-calendar-alt',
@@ -29,7 +29,7 @@ class EventAdmin {
             'event-admin',
             'Events List',
             'All Events',
-            'manage_options',
+            'edit_posts',
             'event-admin',
             array($this, 'display_events_list_page')
         );
@@ -38,7 +38,7 @@ class EventAdmin {
             'event-admin',
             'Add New Event',
             'Add New',
-            'manage_options',
+            'edit_posts',
             'event-admin-new',
             array($this, 'display_add_event_page')
         );
@@ -47,7 +47,7 @@ class EventAdmin {
             'event-admin',
             'Registrations',
             'Registrations',
-            'manage_options',
+            'edit_posts',
             'event-registrations',
             array($this, 'display_registrations_page')
         );
@@ -56,7 +56,7 @@ class EventAdmin {
             'event-admin',
             'Past Events',
             'Past Events',
-            'manage_options',
+            'edit_posts',
             'event-past',
             array($this, 'display_past_events_page')
         );
@@ -65,7 +65,7 @@ class EventAdmin {
             'event-admin',
             'Past Registrations',
             'Past Registrations',
-            'manage_options',
+            'edit_posts',
             'past-registrations',
             array($this, 'display_past_registrations_page')
         );
@@ -74,7 +74,7 @@ class EventAdmin {
             'event-admin', // Parent slug
             'Email History', // Page title
             'Email History', // Menu title
-            'manage_options', // Capability
+            'edit_posts', // Capability
             'sct-email-history', // Menu slug
             array($this, 'sct_render_emails_page') // Callback function
         );
@@ -83,7 +83,7 @@ class EventAdmin {
             'event-admin',
             'Settings',
             'Settings',
-            'manage_options',
+            'edit_posts',
             'event-email-settings',
             array($this, 'display_settings_page')
         );
@@ -221,7 +221,7 @@ class EventAdmin {
     public function save_event() {
         check_ajax_referer('event_admin_nonce');
     
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Permission denied.'));
             return;
         }
@@ -285,7 +285,7 @@ class EventAdmin {
     
     public function delete_event() {
         // Check if user has permission
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Unauthorized access'));
             return;
         }
@@ -376,7 +376,7 @@ class EventAdmin {
             return;
         }
         
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Unauthorized'));
             return;
         }
@@ -445,7 +445,7 @@ class EventAdmin {
     
     public function delete_registration() {
         // Check if user has permission
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Unauthorized access'));
             return;
         }
@@ -494,7 +494,7 @@ class EventAdmin {
             return;
         }
         
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Unauthorized'));
             return;
         }
@@ -849,7 +849,7 @@ class EventAdmin {
     }
 
     public function handle_export_event_registrations() {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_die('Unauthorized access');
         }
 

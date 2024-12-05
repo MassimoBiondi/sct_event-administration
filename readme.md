@@ -74,3 +74,6 @@ Installation
   - added reply to address instead of from addres in Emails
   - fixed display field in Edit Event dialog
   - added organizer email address to event list
+
+- 1.6
+  - adjusted permissions to include editors to be able to add, delete and modify entries
