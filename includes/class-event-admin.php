@@ -122,7 +122,7 @@ class EventAdmin {
                 ev.event_name,
                 CASE 
                     WHEN e.email_type = 'mass_email' THEN 
-                        CONCAT('Mass email sent to ', COUNT(*), ' recipients')
+                        CONCAT('Sent to ', COUNT(*), ' recipients')
                     ELSE reg.email
                 END AS recipient_email,
                 CASE 
@@ -213,8 +213,8 @@ class EventAdmin {
 
     public function display_registrations_page() {
         global $wpdb;
-        $upcoming_events = $this->get_events('upcoming');
-        // $events = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sct_events ORDER BY event_date DESC");
+        $event_id = isset($_GET['event_id']) ? intval($_GET['event_id']) : null;
+        $upcoming_events = $this->get_events('upcoming', $event_id);
         include EVENT_ADMIN_PATH . 'admin/views/registrations.php';
     }
 
@@ -720,7 +720,7 @@ class EventAdmin {
         }
     }
 
-    public function get_events($type = 'upcoming') {
+    public function get_events($type = 'upcoming', $event_id = null) {
         global $wpdb;
 
         $order = ($type === 'upcoming') ? 'ASC' : 'DESC';
@@ -731,6 +731,10 @@ class EventAdmin {
             ? "WHERE DATE(CONCAT(event_date, ' ', event_time)) >= %s"
             : "WHERE DATE(CONCAT(event_date, ' ', event_time)) < %s";
             
+        $where_clause = ($event_id !== null)
+            ? $where_clause . " AND id = ".$event_id
+            : $where_clause;
+
         $sql = $wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}sct_events 
             {$where_clause}

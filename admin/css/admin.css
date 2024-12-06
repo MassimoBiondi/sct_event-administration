@@ -365,3 +365,17 @@
     top: 0;
     z-index: 1;
 }
+
+.placeholder-info code {
+    padding: 2px 6px;
+    margin: 0 2px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.placeholder-info code:hover {
+    background: #e0e0e0;
+}

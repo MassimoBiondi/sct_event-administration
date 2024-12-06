@@ -77,3 +77,10 @@ Installation
 
 - 1.6
   - adjusted permissions to include editors to be able to add, delete and modify entries
+
+- 1.7
+  - clicking on the registration count in the event list now only shows the registrations for the selected event (get_event can now retrieve not only upcoming and past events, but also specific events referenced by ID
+  - placeholder fields can now be added to the message body by clicking on them in the modal email view
+  - visual changes to the send email dialog iin the registrations view
+  - the id before the @ mark in the email address is used as organizer reference in the event list 
+

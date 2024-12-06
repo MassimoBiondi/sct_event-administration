@@ -58,52 +58,34 @@ jQuery(document).ready(function($) {
         });
     });
 
-
-    // // Show/hide update button when guest count changes
-    // $('.guest-count').on('input', function() {
-    //     var input = $(this);
-    //     var originalValue = input.data('original');
-    //     var updateButton = input.siblings('.update-guest-count');
-
-    //     // Disable all other .guest-count inputs
-    //     $('.guest-count').not(this).prop('disabled', true);
-        
-    //     if (input.val() != originalValue) {
-    //         updateButton.show();
-    //     } else {
-    //         updateButton.hide();
-    //     }
-    // });
-
-    // // Optional: Re-enable all inputs when focus is lost
-    // $('.guest-count').on('blur', function() {
-    //     $('.guest-count').prop('disabled', false);
-    //     var input = $(this);
-    //     var originalValue = input.data('original');
-    //     var updateButton = input.siblings('.update-guest-count');
-        
-    //     // Reset value to original
-    //     input.val(originalValue);
-    //     // Hide update button
-    //     updateButton.hide();
-    //     // Re-enable all inputs
-    //     $('.guest-count').prop('disabled', false);
-    // });
-
-    // $('.guest-count').on('focus', function() {
-    //     var input = $(this);
-    //     var originalValue = input.data('original');
-    //     var updateButton = input.siblings('.update-guest-count');
-        
-    //     // Disable all other .guest-count inputs
-    //     $('.guest-count').not(this).prop('disabled', true);
-        
-    //     if (input.val() != originalValue) {
-    //         updateButton.show();
-    //     } else {
-    //         updateButton.hide();
-    //     }
-    // });
+    // Add click handlers for the placeholder codes
+    $('.placeholder-info code').each(function() {
+        $(this)
+            .css('cursor', 'pointer')
+            .attr('title', 'Click to insert')
+            .on('click', function() {
+                var $emailBody = $('#email_body');
+                var placeholder = $(this).text() + ' ';
+                
+                // Get cursor position
+                var startPos = $emailBody[0].selectionStart;
+                var endPos = $emailBody[0].selectionEnd;
+                
+                // Insert placeholder at cursor position
+                var currentContent = $emailBody.val();
+                var newContent = currentContent.substring(0, startPos) + 
+                                 placeholder + 
+                                 currentContent.substring(endPos);
+                $emailBody.val(newContent);
+                
+                // Move cursor after the inserted placeholder
+                var newCursorPos = startPos + placeholder.length;
+                $emailBody[0].setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Focus back on the textarea
+                $emailBody.focus();
+            });
+    });
     
     $('.guest-count').on('input', function() {
         var input = $(this);
@@ -228,7 +210,9 @@ jQuery(document).ready(function($) {
          $('#registration_id').val(registrationId);
          $('#is_mass_email').val('0');
 
-         
+         // Fill recipient Name in Modal
+         $('#admin_mail_recipient').text(name);
+
          // Pre-fill subject with event name
          var eventName = button.closest('.event-registrations').find('h2').text().split(' - ')[0];
          $('#email_subject').val('Regarding: ' + eventName);
@@ -245,6 +229,9 @@ jQuery(document).ready(function($) {
         
         $('#event_id').val(eventId);
         $('#is_mass_email').val('1');
+
+        $('#admin_mail_recipient').text('All');
+
         $('#email_subject').val('Regarding: ' + eventName);
         
         modal.show();

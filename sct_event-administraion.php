@@ -2,7 +2,7 @@
 /*
 Plugin Name: SCT Event Administration
 Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications.
-Version: 1.6
+Version: 1.7
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later

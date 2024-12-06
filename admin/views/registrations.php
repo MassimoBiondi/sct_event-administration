@@ -73,12 +73,13 @@
                                             <span class="dashicons dashicons-email-alt" style="vertical-align: middle; margin-right: 5px;"></span>
                                         Send Email
                                     </button>
-                                    <button class="button button-small delete-registration" 
-                                            data-registration-id="<?php echo $registration->id; ?>"
-                                            data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
-                                            <span class="dashicons dashicons-trash" style="vertical-align: middle; margin-right: 5px;"></span>
-                                        Delete
-                                    </button>
+                                    <span class="trash">
+                                        <a class="delete-registration"
+                                           data-registration-id="<?php echo $registration->id; ?>"
+                                           data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
+                                           Delete
+                                        </a>
+                                    </span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -104,7 +105,7 @@
         <div class="email-modal-content">
             <div class="modal-header">
                 <span class="close-modal">&times;</span>
-                <h2>Send Email</h2>
+                <h2>Send Email to <span id="admin_mail_recipient" class="status-indicator status-failed"></span></h2>
             </div>
             
             <form id="send-email-form">

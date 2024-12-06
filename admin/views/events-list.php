@@ -62,7 +62,7 @@
                         <?php endif; ?>
                     </td>
                     <td><?php echo esc_html($event->guest_capacity > 0 ? $event->guest_capacity : 'Unlimited'); ?></td>
-                    <td><?php echo esc_html($registered); ?></td>
+                    <td><a href="admin.php?page=event-registrations&event_id=<?php echo $event->id; ?>"><?php echo esc_html($registered); ?></a></td>
                     <td>
                         <?php //status-indicator status-failed
                             echo sprintf('<span class="status-indicator status-%s">%s</span>',
@@ -72,7 +72,7 @@
                         ?>
                     </td>
                     <td><?php echo esc_html($event->max_guests_per_registration > 0 ? $event->max_guests_per_registration : 'Unlimited');?></td>
-                    <td><?php echo esc_html($event->admin_email);?></td>
+                    <td class="collapse"><?php echo explode('@', $event->admin_email)[0];?></td>
                     <td>
                         <a href="<?php echo admin_url('admin.php?page=event-admin-new&action=edit&id=' . $event->id); ?>" 
                            class="button button-small">
