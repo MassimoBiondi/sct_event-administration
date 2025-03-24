@@ -6,16 +6,31 @@ jQuery(document).ready(function($) {
         $('#event-registration-form').show();
     });
 
-    // Add real-time validation for guest count
-    $('#guests').on('input', function() {
-        var input = $(this);
-        var value = parseInt(input.val());
-        var max = parseInt(input.attr('max'));
-        
-        if (value > max) {
-            input.val(max);
+    // Calculate total price
+    function calculateTotalPrice() {
+        var memberPrice = parseFloat($('#member_price').val()) || 0;
+        var nonMemberPrice = parseFloat($('#non_member_price').val()) || 0;
+        var memberGuests = parseInt($('#member_guests').val()) || 0;
+        var nonMemberGuests = parseInt($('#non_member_guests').val()) || 0;
+        var priceType = $('#price_type').val();
+        var currencySymbol = eventPublic.currencySymbol;
+        var currencyFormat = eventPublic.currencyFormat !== undefined && eventPublic.currencyFormat !== '' ? parseInt(eventPublic.currencyFormat) : 2;
+
+        var totalPrice = 0;
+
+        if (priceType === 'both') {
+            totalPrice = (memberPrice * memberGuests) + (nonMemberPrice * nonMemberGuests);
+        } else if (priceType === 'member_only') {
+            totalPrice = memberPrice * (memberGuests + nonMemberGuests);
+        } else if (priceType === 'non_member_only') {
+            totalPrice = nonMemberPrice * (memberGuests + nonMemberGuests);
         }
-    });
+
+        $('#total_price').val(currencySymbol + totalPrice.toFixed(currencyFormat));
+    }
+
+    // Bind the calculateTotalPrice function to relevant input changes
+    $('#member_price, #non_member_price, #member_guests, #non_member_guests, #price_type').on('input change', calculateTotalPrice);
 
     // Handle registration form submission
     $('#event-registration-form').on('submit', function(e) {
@@ -55,6 +70,45 @@ jQuery(document).ready(function($) {
         });
     });
 
+    // Handle delete reservation button click
+    $('.delete-reservation').on('click', function(e) {
+        e.preventDefault();
+
+        if (!confirm('Are you sure you want to delete this reservation?')) {
+            return;
+        }
+
+        var button = $(this);
+        var reservationId = button.data('reservation-id');
+        var uniqueId = button.data('unique-id');
+        var nonce = button.data('nonce');
+
+        $.ajax({
+            url: eventPublic.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'delete_reservation',
+                reservation_id: reservationId,
+                unique_id: uniqueId,
+                security: nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Reservation deleted successfully.');
+                    location.reload();
+                } else {
+                    alert('Failed to delete reservation: ' + response.data.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error occurred while deleting reservation. Please try again.');
+                console.error('AJAX Error:', status, error);
+            }
+        });
+    });
+
+    // Initial calculation
+    calculateTotalPrice();
 });
 
 

@@ -29,7 +29,7 @@
                                 //     );
                                 // }
                             } else {
-                                echo '<span class="dashicons dashicons-admin-users" style="vertical-align: middle;"></span>';
+                                echo '<span class="dashicons dashicons-star-filled" style="vertical-align: middle;"></span>';
                                 echo esc_html($email->recipient_email);
                             }
                             ?>

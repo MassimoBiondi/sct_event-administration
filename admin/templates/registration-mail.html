@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Event Registration Confirmation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eeeeee;
+    }
+    .header h1 {
+      margin: 0;
+      color: #4CAF50;
+    }
+    .section {
+      margin: 20px 0;
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: #4CAF50;
+    }
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .details-table td {
+      padding: 8px 0;
+    }
+    .details-table td:first-child {
+      font-weight: bold;
+      width: 40%;
+    }
+    .price-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .price-table th, .price-table td {
+      border: 1px solid #dddddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .price-table th {
+      background-color: #f2f2f2;
+    }
+    .total {
+      text-align: right;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      border-top: 1px solid #eeeeee;
+      padding-top: 10px;
+    }
+    a {
+      color: #4CAF50;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Registration Confirmation</h1>
+      <p>Thank you for registering for the event!</p>
+    </div>
+
+    <div class="section">
+      <h2>Event Details</h2>
+      <table class="details-table">
+        <tr><td>Event:</td><td>Event with Both Prices</td></tr>
+        <tr><td>Date:</td><td>2025-12-01</td></tr>
+        <tr><td>Time:</td><td>18:00</td></tr>
+        <tr><td>Location:</td><td><a href="http://example.com/location-a">Location A</a></td></tr>
+        <tr><td>Description:</td><td>Description for event with both prices</td></tr>
+        <tr><td>Add to Calendar:</td>
+          <td>
+            <a href="https://www.google.com/calendar/render?action=TEMPLATE&text=Event+with+Both+Prices&dates=20251201T180000Z/20251201T200000Z&details=Description+for+event+with+both+prices&location=Location+A&sf=true&output=xml" target="_blank">Add to Google Calendar</a><br>
+            <a href="data:text/calendar;charset=utf8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0ASUMMARY:Event%20with%20Both%20Prices%0ADTSTART:20251201T180000Z%0ADTEND:20251201T200000Z%0ALOCATION:Location%20A%0ADESCRIPTION:Description%20for%20event%20with%20both%20prices%0AEND:VEVENT%0AEND:VCALENDAR" download="event.ics">Add to Apple Calendar</a>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Your Registration</h2>
+      <table class="details-table">
+        <tr><td>Name:</td><td>test</td></tr>
+        <tr><td>Email:</td><td>test5@test.com</td></tr>
+        <tr><td>Guests:</td><td>2</td></tr>
+        <tr><td>Member Guests:</td><td>0</td></tr>
+        <tr><td>Non-Member Guests:</td><td>2</td></tr>
+        <tr><td>Registration Date:</td><td>2025-02-19 10:11</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Price Overview</h2>
+      <table class="price-table">
+        <tr><th>Type</th><th>Count</th><th>Price per Guest</th><th>Total</th></tr>
+        <tr><td>Member Guests</td><td>0</td><td>$50.00</td><td>$0.00</td></tr>
+        <tr><td>Non-Member Guests</td><td>2</td><td>$75.00</td><td>$150.00</td></tr>
+      </table>
+      <div class="total">Total Amount: $150.00</div>
+    </div>
+
+    <div class="footer">
+      <p>If you have any questions, please contact <a href="mailto:admin@example.com">admin@example.com</a>.</p>
+      <p>&copy; 2025 Event Organizer</p>
+    </div>
+  </div>
+</body>
+</html>

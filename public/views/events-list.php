@@ -10,16 +10,16 @@
 
             // Generate the specific registration URL for this event
             $event_registration_url = add_query_arg('id', $event->id, $registration_url);
-            
-            // Generate the specific registration URL for this event
         ?>
             <div class="event-item">
                 <h1><?php echo esc_html($event->event_name); ?></h1>
                 <div>
                     <h3>
                         <?php echo date('F j, Y', strtotime($event->event_date)); ?>
+                        <?php if ($event->event_time !== '00:00:00'): ?>
                         &nbsp;
                         <?php echo date('g:i A', strtotime($event->event_time)); ?>
+                        <?php endif; ?>
                     </h3>
                     <h4>
                         <?php if ($event->location_link): ?>
@@ -42,18 +42,17 @@
                             <?php if ($event->guest_capacity > 0): ?>
                                 <span class="event-available-text">Available Spots: <?php echo esc_html($remaining_capacity); ?></span>
                             <?php endif;?>
-                            <!-- <span class="event-available-text">Available Spots: <?php echo esc_html($remaining_capacity); ?></span> -->
-                            <a href="<?php echo esc_url($event_registration_url); ?>" class="register-button">
-                                Register Now
-                            </a>
+                            <a href="<?php echo esc_url($event_registration_url); ?>" class="register-button">Register</a>
                         </div>
                     <?php else: ?>
-                        <span class="fully-booked">Fully Booked</span>
+                        <div class="registration-closed">
+                            <p>Sorry, this event is fully booked.</p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <p>No upcoming events available.</p>
+        <p>No upcoming events found.</p>
     <?php endif; ?>
 </div>
