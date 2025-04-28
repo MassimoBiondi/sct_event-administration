@@ -75,7 +75,7 @@
                                 <input type="hidden" name="event_id" value="<?php echo esc_attr($event_id); ?>" />
                                 <?php wp_nonce_field('export_event_registrations_' . $event_id); ?>
                                 <button type="submit" class="button button-small">
-                                    <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span>
+                                    <!-- <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span> -->
                                     Export CSV
                                 </button>
                             </form>

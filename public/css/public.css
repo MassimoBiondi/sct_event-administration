@@ -143,11 +143,11 @@ button:hover {
 }
 
 .registration-form .form-field label.total_price {
-    width: auto;
+    /* width: auto; */
 }
 
 .registration-form #total_price {
-    width: auto;
+    /* width: auto; */
     border: none;
     background: transparent;
     font-weight: bold;

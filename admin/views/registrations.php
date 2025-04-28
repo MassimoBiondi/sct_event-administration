@@ -52,10 +52,10 @@
         <div class="event-registrations">
             <div class="event-header">
                 <?php if ($event->member_only): ?>
-                    <span class="dashicons dashicons-admin-users"></span>
+                    <img src="<?php echo plugin_dir_url(__DIR__) . 'css/img/member.svg'; ?>" alt="Lottery" class="lottery-icon" style="width: 20px; height: 20px;">
                 <?php endif; ?>
                 <?php if ($event->by_lottery): ?>
-                    <span class="dashicons dashicons-tickets-alt"></span>
+                    <img src="<?php echo plugin_dir_url(__DIR__) . 'css/img/lottery_wheel.svg'; ?>" alt="Lottery" class="lottery-icon" style="width: 20px; height: 20px;">
                 <?php endif; ?>
                 <h2><?php echo esc_html($event->event_name); ?></h2>
                 <span class="event-date"><?php echo date('Y-m-d', strtotime($event->event_date)); ?></span>
@@ -63,18 +63,23 @@
                 <button class="button button-small mail-to-all" 
                         data-event-id="<?php echo esc_attr($event->id); ?>"
                         data-event-name="<?php echo esc_attr($event->event_name); ?>">
-                        <span class="dashicons dashicons-email-alt" style="vertical-align: middle; margin-right: 5px;"></span>
+                        <!-- <span class="dashicons dashicons-email-alt" style="vertical-align: middle; margin-right: 5px;"></span> -->
+                        Email to All
                 </button>
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline-block; margin-left: 15px;">
                     <input type="hidden" name="action" value="export_event_registrations" />
                     <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>" />
                     <?php wp_nonce_field('export_event_registrations_' . $event->id); ?>
                     <button type="submit" class="button button-small">
-                        <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span>
+                        <!-- <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span> -->
+                        Export CSV
                     </button>
                 </form>
-                <button class="button button-small add-registration" style="display: inline-block; margin-left: 15px;" data-event-id="<?php echo esc_attr($event->id); ?>" data-children-counted-separately="<?php echo esc_attr($event->children_counted_separately); ?>" data-member-only="<?php echo esc_attr($event->member_only); ?>" data-member-price="<?php echo esc_attr($event->member_price); ?>" data-non-member-price="<?php echo esc_attr($event->non_member_price); ?>">
-                    <span class="dashicons dashicons-plus" style="vertical-align: middle; margin-right: 5px;"></span>
+                <button class="button button-small add-registration" 
+                        data-event-id="<?php echo esc_attr($event->id); ?>"
+                        data-pricing-options="<?php echo esc_attr(json_encode(maybe_unserialize($event->pricing_options))); ?>">
+                    <!-- <span class="dashicons dashicons-plus" style="vertical-align: middle; margin-right: 5px;"></span> -->
+                    Add Registration
                 </button>
                 <?php 
                 // Check if winners have already been selected
@@ -92,164 +97,76 @@
             </div>            
             
             <?php if (!empty($registrations)): ?>
-                <table class="wp-list-table widefat fixed striped" data-event-capacity="<?php echo esc_attr($event->guest_capacity); ?>" data-total-registered="<?php echo esc_attr($total_registered); ?>" data-total-guests="<?php echo esc_attr($total_guests); ?>" data-total-members="<?php echo esc_attr($total_member_guests); ?>">
+                <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
-                            <?php if ($event->member_only): ?>
-                                <th>Members</th>
-                            <?php elseif ($event->non_member_price > 0 && $event->member_price == 0): ?>
-                                <th>Guests</th>
-                            <?php else: ?>
-                                <?php if ($event->non_member_price > 0 && $event->member_price > 0): ?>
-                                    <th>Members</th>
-                                    <th>Guests</th>
-                                <?php else: ?>
-                                    <th>Guests</th>
-                                <?php endif; ?>
+                            <?php if (!empty($event->pricing_options)) : ?>
+                                <?php
+                                $pricing_options = maybe_unserialize($event->pricing_options);
+                                foreach ($pricing_options as $option) : ?>
+                                    <th class="collapse column-small center"><?php echo esc_html($option['name']); ?></th>
+                                <?php endforeach; ?>
                             <?php endif; ?>
-                            <?php if ($event->children_counted_separately): ?>
-                                <th>Children</th>
-                            <?php endif; ?>
-                            <?php if ($event->member_price > 0 || $event->non_member_price > 0): ?>
-                                <th>Total Price</th>
-                            <?php endif; ?>
-                            <th>Registration Date</th>
-                            <th class="right"></th>
+                            <!-- <th>Registration Date</th> -->
+                            <th class="collapse column-small center">Total Guests</th>
+                            <th class="right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($registrations as $registration): 
-                            $total_price = ($event->member_price * $registration->member_guests) + ($event->non_member_price * $registration->non_member_guests);
+                        <?php foreach ($registrations as $registration) : 
+                            $guest_details = maybe_unserialize($registration->guest_details);
+                            $total_guests = $registration->guest_count;
                         ?>
-                            <tr <?php echo $registration->is_winner ? 'class="winner"' : ''; ?> data-registration-id="<?php echo $registration->id; ?>" data-member-price="<?php echo esc_attr($event->member_price); ?>" data-non-member-price="<?php echo esc_attr($event->non_member_price); ?>">
-                                <td>
-                                    <?php echo $registration->is_winner ? '<span class="dashicons dashicons-yes"></span>' : ''; ?>
-                                    <?php echo esc_html($registration->name); ?>
-                                </td>
-                                <td><?php echo esc_html($registration->email); ?></td>
-                                <?php if ($event->member_only): ?>
-                                    <td class="member-guest-count-cell">
-                                        <input type="number" 
-                                               class="member-guest-count small-text" 
-                                               value="<?php echo esc_attr($registration->member_guests); ?>"
-                                               min="0"
-                                               data-original="<?php echo esc_attr($registration->member_guests); ?>">
-                                        <button class="button button-small update-member-guest-count" style="display: none;">
-                                            Update
-                                        </button>
-                                    </td>
-                                <?php elseif ($event->non_member_price > 0 && $event->member_price == 0): ?>
-                                    <td class="non-member-guest-count-cell">
-                                        <input type="number" 
-                                               class="non-member-guest-count small-text" 
-                                               value="<?php echo esc_attr($registration->non_member_guests); ?>"
-                                               min="0"
-                                               data-original="<?php echo esc_attr($registration->non_member_guests); ?>">
-                                        <button class="button button-small update-non-member-guest-count" style="display: none;">
-                                            Update
-                                        </button>
-                                    </td>
-                                <?php else: ?>
-                                    <?php if ($event->member_price != 0 ): ?>
-                                        <td class="member-guest-count-cell">
+                            <tr data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                <td><?php echo esc_html($registration->name); ?></td>
+                                <td class="collapse"><?php echo esc_html($registration->email); ?></td>
+                                <?php if (!empty($event->pricing_options)) : ?>
+                                    <?php foreach ($pricing_options as $index => $option) : 
+                                        $guest_count = isset($guest_details[$index]) ? intval($guest_details[$index]) : 0;
+                                    ?>
+                                        <td class="collapse column-small center">
                                             <input type="number" 
-                                                class="member-guest-count small-text" 
-                                                value="<?php echo esc_attr($registration->member_guests); ?>"
-                                                min="0"
-                                                data-original="<?php echo esc_attr($registration->member_guests); ?>">
-                                            <button class="button button-small update-member-guest-count" style="display: none;">
-                                                Update
-                                            </button>
+                                                   class="pricing-option-guest-count small-text" 
+                                                   data-pricing-index="<?php echo esc_attr($index); ?>" 
+                                                   value="<?php echo esc_attr($guest_count); ?>"
+                                                   data-original="<?php echo esc_attr($guest_count); ?>" 
+                                                   min="0">
                                         </td>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                <td class="total-guests collapse column-small center">
+                                    <?php if (empty($event->pricing_options)) : ?>
+                                        <input type="number" 
+                                               class="guest-count small-text" 
+                                               value="<?php echo esc_attr($total_guests); ?>"
+                                               data-original="<?php echo esc_attr($total_guests); ?>" 
+                                               min="0">
+                                    <?php else : ?>
+                                        <?php echo esc_attr($total_guests); ?>
                                     <?php endif; ?>
-                                    <td class="non-member-guest-count-cell">
-                                        <input type="number" 
-                                               class="non-member-guest-count small-text" 
-                                               value="<?php echo esc_attr($registration->non_member_guests); ?>"
-                                               min="0"
-                                               data-original="<?php echo esc_attr($registration->non_member_guests); ?>">
-                                        <button class="button button-small update-non-member-guest-count" style="display: none;">
-                                            Update
-                                        </button>
-                                    </td>
-                                <?php endif; ?>
-                                <?php if ($event->children_counted_separately): ?>
-                                    <td class="children-guest-count-cell">
-                                        <input type="number" 
-                                               class="children-guest-count small-text" 
-                                               value="<?php echo esc_attr($registration->children_guests); ?>"
-                                               min="0"
-                                               data-original="<?php echo esc_attr($registration->children_guests); ?>">
-                                        <button class="button button-small update-children-guest-count" style="display: none;">
-                                            Update
-                                        </button>
-                                    </td>
-                                <?php endif; ?>
-                                <?php if ($event->member_price > 0 || $event->non_member_price > 0): ?>
-                                    <td class="total-price-cell">
-                                        <?php echo $sct_settings['currency_symbol']; ?>
-                                        <span class="total-price"><?php echo esc_html(number_format($total_price, $sct_settings['currency_format'])); ?></span>
-                                    </td>
-                                <?php endif; ?>
-                                <td><?php echo esc_html($registration->registration_date); ?></td>
+                                </td>
+                                <!-- <td><?php echo esc_html(date('Y-m-d H:i', strtotime($registration->registration_date))); ?></td> -->
                                 <td class="right">
-                                    <a class="send-email" 
-                                            data-email="<?php echo esc_attr($registration->email); ?>">
-                                            <span class="dashicons dashicons-email-alt" style="vertical-align: middle; margin-right: 5px;"></span>
-                                    </a>
-                                    <span class="trash">
-                                        <a class="delete-registration" 
-                                                data-registration-id="<?php echo $registration->id; ?>"
-                                                data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
-                                                <span class="dashicons dashicons-trash"></span>
-                                        </a>
-                                    </span>
+                                    <button class="button update-guest-counts" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                        Update
+                                    </button>
+                                    <button class="button send-email" 
+                                            data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                            data-recipient-email="<?php echo esc_attr($registration->email); ?>" 
+                                            data-event-name="<?php echo esc_attr($event->event_name); ?>">
+                                        Email
+                                    </button>
+                                    <button class="button delete-registration" 
+                                            data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                            data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <?php if ($event->member_only): ?>
-                                <th>Members: <span class="total-guests"><?php echo esc_html($total_member_guests); ?></span></th>
-                                <?php if ($event->member_price > 0 || $event->non_member_price > 0): ?>
-                                    <th id="table-total-price" class="table-total-price"><?php echo $sct_settings['currency_symbol']; ?> <span class="total-price-value">0.00</span></th>
-                                <?php endif; ?>
-                                <th></th>
-                            <?php elseif ($event->non_member_price > 0 && $event->member_price == 0): ?>
-                                <th>Guests: <span class="total-non-members"><?php echo esc_html($total_non_member_guests); ?></span></th>
-                                <?php if ($event->member_price > 0 || $event->non_member_price > 0): ?>
-                                    <th id="table-total-price" class="table-total-price"><?php echo $sct_settings['currency_symbol']; ?> <span class="total-price-value">0.00</span></th>
-                                <?php endif; ?>
-                                <th>Total Guests: <span class="total-guests"><?php echo esc_html($total_non_member_guests); ?></span></th>
-                                <th class="right"><span class="remaining-capacity"></span></th>
-                            <?php elseif (!$event->member_only && $event->member_price == 0): ?>
-                                <th>Guests: <span class="total-non-members"><?php echo esc_html($total_non_member_guests); ?></span></th>
-                                <?php if ($event->children_counted_separately): ?>
-                                    <th>Children: <span class="total-children"><?php echo esc_html($total_children_guests); ?></span></th>
-                                <?php else: ?>
-                                    <th></th>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <th>Members: <span class="total-members"><?php echo esc_html($total_member_guests); ?></span></th>
-                                <th>Guests: <span class="total-non-members"><?php echo esc_html($total_non_member_guests); ?></span></th>
-                                <?php if ($event->children_counted_separately): ?>
-                                    <th>Children: <span class="total-children"><?php echo esc_html($total_children_guests); ?></span></th>
-                                <?php endif; ?>
-                                <th id="table-total-price" class="table-total-price"><?php echo $sct_settings['currency_symbol']; ?> <span class="total-price-value">0.00</span></th>
-                            <?php endif; ?>
-                            <?php
-                                if ($non_null_count >= 2) {
-                                    echo '<th>Total Guests: <span class="total-guests">' . esc_html($total_member_guests + $total_non_member_guests + $total_children_guests). '</span></th>';
-                                }
-                            ?>
-                            <th class="right"><span class="remaining-capacity"></span></th>
-                        </tr>
-                    </tfoot>
                 </table>
             <?php else: ?>
                 <p>No registrations for this event.</p>
@@ -296,12 +213,11 @@
                         <code>{event_name}</code> - Event name<br>
                         <code>{event_date}</code> - Event date<br>
                         <code>{event_time}</code> - Event time<br>
-                        <code>{location_name}</code> - Event location name<br>
                         <code>{description}</code> - Event description<br>
+                        <code>{location_name}</code> - Event location name<br>
                         <code>{location_link}</code> - Event location link<br>
+                        <code>{location_url}</code> - Event location url<br>
                         <code>{guest_capacity}</code> - Event guest capacity<br>
-                        <!-- <code>{max_guests_per_registration}</code> - Max guests per registration<br> -->
-                        <!-- <code>{admin_email}</code> - Admin email<br> -->
                         <code>{member_price}</code> - Member price<br>
                         <code>{non_member_price}</code> - Non-member price<br>
                         <code>{member_only}</code> - Member only event<br>
@@ -322,42 +238,35 @@
 
     <!-- Add Registration Modal -->
     <div id="add-registration-modal" class="email-modal">
-        <div class="email-modal-content">
+        <div class="modal-content">
             <div class="modal-header">
                 <span class="close-modal">&times;</span>
                 <h2>Add Registration</h2>
             </div>
-            
             <form id="add-registration-form">
-                <?php wp_nonce_field('add_registration_nonce', 'add_registration_security'); ?>
+                <?php wp_nonce_field('add_registration_nonce', 'security'); ?>
                 <input type="hidden" name="action" value="add_registration">
                 <input type="hidden" name="event_id" id="add_registration_event_id">
-                
+
                 <div class="form-field">
-                    <label for="registration_name">Name:</label>
-                    <input type="text" id="registration_name" name="name" class="regular-text" required>
+                    <label for="add_registration_name">Name:</label>
+                    <input type="text" id="add_registration_name" name="name" required>
                 </div>
-                
+
                 <div class="form-field">
-                    <label for="registration_email">Email:</label>
-                    <input type="email" id="registration_email" name="email" class="regular-text" required>
+                    <label for="add_registration_email">Email:</label>
+                    <input type="email" id="add_registration_email" name="email" required>
                 </div>
-                
-                <div class="form-field" id="registration_member_guests_field">
-                    <label for="registration_member_guests">Members:</label>
-                    <input type="number" id="registration_member_guests" name="member_guests" class="small-text" min="0" value="0">
+
+                <div id="add_registration_guest_count_field" class="form-field">
+                    <label for="add_registration_guest_count">Guest Count:</label>
+                    <input type="number" id="add_registration_guest_count" name="guest_count" min="0" value="0">
                 </div>
-                
-                <div class="form-field" id="registration_non_member_guests_field">
-                    <label for="registration_non_member_guests">Guests:</label>
-                    <input type="number" id="registration_non_member_guests" name="non_member_guests" class="small-text" min="0" value="0">
+
+                <div id="add_registration_pricing_options_container" class="form-field">
+                    <!-- Dynamic pricing options will be appended here -->
                 </div>
-                
-                <div class="form-field" id="registration_children_guests_field">
-                    <label for="registration_children_guests">Children:</label>
-                    <input type="number" id="registration_children_guests" name="children_guests" class="small-text" min="0" value="0">
-                </div>
-                
+
                 <div class="submit-buttons">
                     <button type="button" class="button cancel-registration">Cancel</button>
                     <button type="submit" class="button button-primary">Add Registration</button>

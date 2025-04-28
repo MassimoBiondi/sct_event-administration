@@ -14,10 +14,10 @@
                 <strong>Location:</strong> 
                 <?php if ($event->location_link): ?>
                     <a href="<?php echo esc_url($event->location_link); ?>" target="_blank">
-                        <?php echo esc_html($event->location_name); ?>
+                        <?php echo esc_html(stripslashes($event->location_name)); ?>
                     </a>
                 <?php else: ?>
-                    <?php echo esc_html($event->location_name); ?>
+                    <?php echo esc_html(stripslashes($event->location_name)); ?>
                 <?php endif; ?>
             </p>
             <?php if ($event->guest_capacity > 0): ?>
@@ -57,84 +57,92 @@
             $price_type = 'free';
         }
         $min_val = ($price_type == 'both') ? 0 : 1;
+
+        // Check if the event is unpublished
+        $is_unpublished = !empty($event->unpublish_date) && strtotime($event->unpublish_date) <= time();
     ?>
 
-    <?php if (!$can_register): ?>
+    <?php if ($is_unpublished): ?>
+        <div class="registration-closed">
+            <p>Registration for this event is closed.</p>
+        </div>
+    <?php elseif (!$can_register): ?>
         <div class="registration-closed">
             <p>Sorry, this event is for members only.</p>
         </div>
     <?php elseif ($event->guest_capacity == 0 || $remaining_capacity > 0): ?>
         <div class="registration-form-container">
-            <form id="event-registration-form" class="registration-form">
+            <form id="event-registration-form" class="registration-form uk-form-horizontal">
                 <input type="hidden" name="action" value="register_event">
                 <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>">
                 <input type="hidden" name="nonce" value="<?php echo wp_create_nonce('event_registration_nonce'); ?>">
-                <input type="hidden" id="member_price" value="<?php echo esc_attr($member_price); ?>">
-                <input type="hidden" id="non_member_price" value="<?php echo esc_attr($non_member_price); ?>">
-                <input type="hidden" id="price_type" value="<?php echo esc_attr($price_type); ?>">
 
-                <div class="form-field">
+                <div class="uk-margin">
                     <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required>
+                    <div class="uk-form-controls">
+                        <input type="text" id="name" name="name" required>
+                    </div>
                 </div>
-                
-                <div class="form-field">
+
+                <div class="uk-margin">
                     <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <?php if ($price_type == 'both' || $price_type == 'member_only'): ?>
-                <div class="form-field">
-                    <label for="member_guests">Number of Members:</label>
-                    <input type="number" id="member_guests" name="member_guests" min="<?php echo $min_val; ?>" value="<?php echo $min_val; ?>" required>
-                    <?php if ($member_price > 0): ?>
-                    <div class="member-price-info">
-                        <span class="price-text">Price per member: <?php echo $sct_settings['currency_symbol'].esc_html(number_format($member_price, $sct_settings['currency_format'])); ?></span>
+                    <div class="uk-form-controls">
+                        <input type="email" id="email" name="email" required>
                     </div>
+                </div>
+
+                <div id="pricing-options-container">
+                    <?php if (!empty($event->pricing_options)) :
+                        $pricing_options = maybe_unserialize($event->pricing_options);
+                        foreach ($pricing_options as $index => $option) : ?>
+                            <div class="pricing-option uk-margin">
+                                <label for="guest_count_<?php echo esc_attr($index); ?>">
+                                    <?php echo esc_html($option['name']); ?> (<?php echo esc_html($sct_settings['currency_symbol'] . $option['price']); ?>):
+                                </label>
+                                <div class="uk-form-controls">
+                                    <input type="number" 
+                                        id="guest_count_<?php echo esc_attr($index); ?>" 
+                                        name="guest_details[<?php echo esc_attr($index); ?>][count]" 
+                                        class="small-text guest-count" 
+                                        min="0" 
+                                        value="0">
+                                    <input type="hidden" 
+                                        name="guest_details[<?php echo esc_attr($index); ?>][name]" 
+                                        value="<?php echo esc_attr($option['name']); ?>">
+                                    <input type="hidden" 
+                                        name="guest_details[<?php echo esc_attr($index); ?>][price]" 
+                                        value="<?php echo esc_attr($option['price']); ?>">
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                        <div class="uk-margin">
+                            <label for="total_price">Total Price:</label>
+                            <div class="uk-form-controls">
+                                <!-- <input type="number" class="small-text" id="total_price" name="total_price" value="0" readonly> -->
+                                 <span class="currency-symbol"><?php echo esc_attr($sct_settings['currency_symbol']); ?></span>
+                                 
+                                <input type="number" 
+                                    class="small-text" 
+                                    id="total_price" 
+                                    name="total_price" 
+                                    data-currency="<?php echo esc_attr($sct_settings['currency_symbol']); ?>" 
+                                    data-format="<?php echo esc_attr($sct_settings['currency_format']); ?>"
+                                    value="<?php echo esc_html($sct_settings['currency_symbol']); ?> <?php echo number_format(0, intval($sct_settings['currency_format'])); ?>" 
+                                    readonly>
+                            </div>
+                        </div>
+                    <?php else : ?>
+                        <div class="uk-margin">
+                            <label for="guest_count">Number of Guests:</label>
+                            <div class="uk-form-controls">
+                                <input type="number" id="guest_count" name="guest_count" class="small-text" min="0" value="0">
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
-                <?php endif; ?>
-                
-                <?php if ($price_type == 'both' || $price_type == 'non_member_only'): ?>
-                <div class="form-field">
-                    <label for="non_member_guests">Number of Guests:</label>
-                    <input type="number" id="non_member_guests" name="non_member_guests" min="<?php echo $min_val; ?>" value="<?php echo $min_val; ?>" required>
-                    <?php if ($non_member_price > 0): ?>
-                    <div class="non-member-price-info">
-                        <span class="price-text">Price per Guest: <?php echo $sct_settings['currency_symbol'].esc_html(number_format($non_member_price, $sct_settings['currency_format'])); ?></span>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
 
-                <?php if ($price_type == 'free' || ($price_type == 'non_member_only' && $non_member_price == 0)): ?>
-                <div class="form-field">
-                    <label for="non_member_guests">Number of Guests:</label>
-                    <input type="number" id="non_member_guests" name="non_member_guests" min="<?php echo $min_val; ?>" value="<?php echo $min_val; ?>" required>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($event->children_counted_separately): ?>
-                <div class="form-field">
-                    <label for="children_guests">Number of Children:</label>
-                    <input type="number" id="children_guests" name="children_guests" min="0" value="0" required>
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($price_type != 'free' && !($price_type == 'member_only' && $member_price == 0)): ?>
-                <div class="form-field">
-                    <label class="total_price" for="total_price">Total Price:</label>
-                    <input type="text" id="total_price" name="total_price" value="0.00" readonly>
-                </div>
-                <?php endif; ?>
-
-                <div class="event-registration">
-                    <div class="event-available">
-                        <?php if ($event->guest_capacity > 0): ?>
-                            <span class="event-available-text">Available spots: <?php echo esc_html($remaining_capacity); ?></span>
-                        <?php endif;?>
-                        <button type="submit" class="submit-button">Submit Registration</button>
-                    </div>
+                <div class="uk-margin">
+                    <button type="submit" class="submit-button">Submit Registration</button>
                 </div>
             </form>
         </div>

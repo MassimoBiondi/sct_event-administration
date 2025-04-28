@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: SCT Event Administration
-Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications.
-Version: 1.9
+    Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
+    Version: 2.0
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 
 define('EVENT_ADMIN_PATH', plugin_dir_path(__FILE__));
 define('EVENT_ADMIN_URL', plugin_dir_url(__FILE__));
-define('EVENT_ADMIN_VERSION', '1.8');
+define('EVENT_ADMIN_VERSION', '1.9');
 
 // Create database tables on activation
 function event_admin_activate() {
@@ -37,12 +37,14 @@ function event_admin_activate() {
         guest_capacity int NOT NULL,
         max_guests_per_registration int NOT NULL,
         admin_email varchar(255) NOT NULL,
-        member_price decimal(10,2) DEFAULT 0.00,
-        non_member_price decimal(10,2) DEFAULT 0.00,
+        pricing_options longtext DEFAULT NULL,
         member_only tinyint(1) DEFAULT 0,
         children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         custom_email_template longtext DEFAULT NULL,
+        thumbnail_url varchar(255) DEFAULT NULL,
+        publish_date datetime DEFAULT NULL,
+        unpublish_date datetime DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
@@ -53,9 +55,7 @@ function event_admin_activate() {
         name varchar(255) NOT NULL,
         email varchar(255) NOT NULL,
         guest_count int NOT NULL,
-        member_guests int NOT NULL DEFAULT 0,
-        non_member_guests int NOT NULL DEFAULT 0,
-        children_guests int NOT NULL DEFAULT 0,
+        guest_details longtext DEFAULT NULL,
         registration_date datetime DEFAULT CURRENT_TIMESTAMP,
         is_winner tinyint(1) DEFAULT 0,
         unique_identifier varchar(255) NOT NULL,
@@ -197,12 +197,13 @@ function event_admin_update_database() {
         guest_capacity int NOT NULL,
         max_guests_per_registration int NOT NULL,
         admin_email varchar(255) NOT NULL,
-        member_price decimal(10,2) DEFAULT 0.00,
-        non_member_price decimal(10,2) DEFAULT 0.00,
+        pricing_options longtext DEFAULT NULL,
         member_only tinyint(1) DEFAULT 0,
         children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         custom_email_template longtext DEFAULT NULL,
+        publish_date datetime DEFAULT NULL,
+        unpublish_date datetime DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
@@ -214,16 +215,15 @@ function event_admin_update_database() {
         name varchar(255) NOT NULL,
         email varchar(255) NOT NULL,
         guest_count int NOT NULL,
-        member_guests int NOT NULL DEFAULT 0,
-        non_member_guests int NOT NULL DEFAULT 0,
-        children_guests int NOT NULL DEFAULT 0,
+        guest_details longtext DEFAULT NULL,
         registration_date datetime DEFAULT CURRENT_TIMESTAMP,
         is_winner tinyint(1) DEFAULT 0,
         unique_identifier varchar(255) NOT NULL,
         PRIMARY KEY  (id),
         UNIQUE KEY unique_event_email (event_id, email)
     ) ENGINE=INNODB $charset_collate;";
-    dbDelta($sql);
+    $result = dbDelta($sql);
+    error_log(print_r($result, true));
 
     // Update the sct_event_emails table
     $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}sct_event_emails (
@@ -240,7 +240,8 @@ function event_admin_update_database() {
         FOREIGN KEY (event_id) REFERENCES {$wpdb->prefix}sct_events(id) ON DELETE CASCADE,
         FOREIGN KEY (registration_id) REFERENCES {$wpdb->prefix}sct_event_registrations(id) ON DELETE CASCADE
     ) ENGINE=INNODB $charset_collate;";
-    dbDelta($sql);
+    $result = dbDelta($sql);
+    error_log(print_r($result, true));
 }
 
 function event_admin_set_default_options() {

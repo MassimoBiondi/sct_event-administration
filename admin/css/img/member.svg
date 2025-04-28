@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Created with Vectornator (http://vectornator.io/) -->
+<svg height="100%" stroke-miterlimit="10" style="fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;" version="1.1" viewBox="0 0 128 128" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:vectornator="http://vectornator.io" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<path d="M29.7314 33.0003C29.7314 14.075 45.0747-0.000209791 64-0.000209791C82.9253-0.000209791 98.2686 15.3431 98.2686 34.2684C98.2686 53.1937 82.9253 68.5371 64 68.5371C45.0747 68.5371 29.7314 51.9256 29.7314 33.0003ZM0.0815089 128C5.27952 94.7903 29.331 69.3828 64 69.3828C98.669 69.3828 122.788 94.7903 127.986 128L0.0815089 128Z" id="Fill"/>
+</defs>
+<clipPath id="ArtboardFrame">
+<rect height="128" width="128" x="0" y="0"/>
+</clipPath>
+<g clip-path="url(#ArtboardFrame)" id="Untitled" vectornator:layerName="Untitled">
+<g opacity="1" vectornator:layerName="path">
+<mask height="128" id="StrokeMask" maskUnits="userSpaceOnUse" width="127.905" x="0.0815089" y="-0.000209791">
+<rect fill="#000000" height="128" stroke="none" width="127.905" x="0.0815089" y="-0.000209791"/>
+<use fill="#ffffff" fill-rule="evenodd" stroke="none" xlink:href="#Fill"/>
+</mask>
+<use fill="none" mask="url(#StrokeMask)" stroke="#000002" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" xlink:href="#Fill"/>
+</g>
+</g>
+</svg>

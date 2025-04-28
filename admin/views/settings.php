@@ -67,8 +67,8 @@
                                name="currency" 
                                value="<?php echo esc_attr($sct_settings['currency']); ?>" 
                                class="regular-text">
-                        Symbol <input type="hidden" id="currency_symbol" name="currency_symbol" value="<?php echo esc_attr($sct_settings['currency_symbol']); ?>">
-                        Format <input type="hidden" id="currency_format" name="currency_format" value="<?php echo esc_attr($sct_settings['currency_format']); ?>">
+                        <input type="hidden" id="currency_symbol" name="currency_symbol" value="<?php echo esc_attr($sct_settings['currency_symbol']); ?>">
+                        <input type="hidden" id="currency_format" name="currency_format" value="<?php echo esc_attr($sct_settings['currency_format']); ?>">
                         <p class="description">Currency code (e.g., USD, EUR, GBP).</p>
                     </td>
                 </tr>

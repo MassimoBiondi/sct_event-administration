@@ -53,7 +53,7 @@
                            id="location_name" 
                            name="location_name" 
                            class="regular-text"
-                           value="<?php echo $event ? esc_attr($event->location_name) : ''; ?>"
+                           value="<?php echo $event ? esc_html(stripslashes($event->location_name)) : ''; ?>"
                            required>
                 </td>
             </tr>
@@ -113,12 +113,59 @@
                            required>
                 </td>
             </tr>
+            <tr>
+                <th><label for="thumbnail_url"><?php _e('Event Thumbnail', 'sct-event-administration'); ?></label></th>
+                <td>
+                    <input type="hidden" id="thumbnail_url" name="thumbnail_url" value="<?php echo esc_attr($event->thumbnail_url ?? ''); ?>">
+                    <button type="button" class="button" id="upload-thumbnail-button"><?php _e('Upload/Select Image', 'sct-event-administration'); ?></button>
+                    <div id="thumbnail-preview" style="margin-top: 10px;">
+                        <?php if (!empty($event->thumbnail_url)) : ?>
+                            <img src="<?php echo esc_url($event->thumbnail_url); ?>" alt="" style="max-width: 100%; height: auto;">
+                        <?php endif; ?>
+                    </div>
+                </td>
+            </tr>
         </table>
 
         <div id="accordion">
             <h3>Additional Options</h3>
             <div>
                 <table class="form-table">
+                    <tr>
+                        <th><label for="pricing_options"><?php _e('Pricing Options', 'sct-event-administration'); ?></label></th>
+                        <td>
+                            <div id="pricing-options-container">
+                                <?php if (!empty($event->pricing_options)) :
+                                    $pricing_options = maybe_unserialize($event->pricing_options);
+                                    foreach ($pricing_options as $index => $option) : ?>
+                                        <div class="pricing-option">
+                                            <input type="text" name="pricing_options[<?php echo $index; ?>][name]" value="<?php echo esc_attr($option['name']); ?>" placeholder="Category Name" required>
+                                            <input type="number" name="pricing_options[<?php echo $index; ?>][price]" value="<?php echo esc_attr($option['price']); ?>" placeholder="Price (0 for free)" step="0.01" min="0" required>
+                                            <button type="button" class="remove-pricing-option button">Remove</button>
+                                        </div>
+                                    <?php endforeach;
+                                endif; ?>
+                            </div>
+                            <button type="button" id="add-pricing-option" class="button">Add Pricing Option</button>
+                            <p class="description">Add pricing <small>Set the price to 0 for free</small></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="publish_date"><?php _e('Publish Date and Time', 'sct-event-administration'); ?></label></th>
+                        <td>
+                            <input type="datetime-local" id="publish_date" name="publish_date" 
+                                value="<?php echo $event->publish_date ? esc_attr(date('Y-m-d\TH:i', strtotime($event->publish_date))) : NULL; ?>">
+                            <p class="description">Set the date and time when the event should be published.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="unpublish_date"><?php _e('Unpublish Date and Time', 'sct-event-administration'); ?></label></th>
+                        <td>
+                            <input type="datetime-local" id="unpublish_date" name="unpublish_date" 
+                                value="<?php echo $event->unpublish_date ? esc_attr(date('Y-m-d\TH:i', strtotime($event->unpublish_date))) : NULL; ?>">
+                            <p class="description">Set the date and time when the event should be unpublished.</p>
+                        </td>
+                    </tr>
                     <tr>
                         <th><label for="max_guests_per_registration">Max Guests/Registration:</label></th>
                         <td>
@@ -133,34 +180,6 @@
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="member_price">Member Price</label></th>
-                        <td>
-                            <input type="number" 
-                                   id="member_price" 
-                                   name="member_price" 
-                                   class="regular-text"
-                                   value="<?php echo $event ? esc_attr($event->member_price) : ''; ?>"
-                                   step="0.01"
-                                   min="0">
-                                
-                                <p class="description">Set to 0 for free</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="non_member_price">Non-Member Price</label></th>
-                        <td>
-                            <input type="number" 
-                                   id="non_member_price" 
-                                   name="non_member_price" 
-                                   class="regular-text"
-                                   value="<?php echo $event ? esc_attr($event->non_member_price) : ''; ?>"
-                                   step="0.01"
-                                   min="0">
-                                
-                                <p class="description">Set to 0 for free</p>
-                        </td>
-                    </tr>
-                    <tr>
                         <th><label for="member_only">Members Only</label></th>
                         <td>
                             <input type="checkbox" 
@@ -168,17 +187,6 @@
                                    name="member_only" 
                                    value="1"
                                    <?php echo $event && $event->member_only ? 'checked' : ''; ?>>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="children_counted_separately">Children Counted Separately</label></th>
-                        <td>
-                            <input type="checkbox" 
-                                   id="children_counted_separately" 
-                                   name="children_counted_separately" 
-                                   value="1"
-                                   <?php echo $event && $event->children_counted_separately ? 'checked' : ''; ?>>
-                                <p class="description">Children will be counted separately from adults</p>
                         </td>
                     </tr>
                     <tr>
@@ -203,25 +211,17 @@
                                     <code>{name}</code> - Registrant's name<br>
                                     <code>{email}</code> - Registrant's email<br>
                                     <code>{guest_count}</code> - Number of guests<br>
-                                    <code>{member_guests}</code> - Number of member guests<br>
-                                    <code>{non_member_guests}</code> - Number of non-member guests<br>
-                                    <!-- <code>{registration_date}</code> - Registration date<br> -->
                                     <code>{event_name}</code> - Event name<br>
                                     <code>{event_date}</code> - Event date<br>
                                     <code>{event_time}</code> - Event time<br>
-                                    <code>{location_name}</code> - Event location name<br>
                                     <code>{description}</code> - Event description<br>
+                                    <code>{location_name}</code> - Event location name<br>
+                                    <code>{location_url}</code> - Event location url<br>
                                     <code>{location_link}</code> - Event location link<br>
                                     <code>{guest_capacity}</code> - Event guest capacity<br>
-                                    <!-- <code>{max_guests_per_registration}</code> - Max guests per registration<br> -->
-                                    <!-- <code>{admin_email}</code> - Admin email<br> -->
-                                    <code>{member_price}</code> - Member price<br>
-                                    <code>{non_member_price}</code> - Non-member price<br>
                                     <code>{member_only}</code> - Member only event<br>
-                                    <code>{total_price}</code> - Total price
+                                    <code>{total_price}</code> - Total price<br>
                                     <code>{remaining_capacity}</code> - Remaining capacity<br>
-                                    <code>{children_counted_separately}</code> - Children counted separately<br>
-                                    <code>{children_guests}</code> - Number of children guests<br>
                                 </p>
                             </div>
                         </td>

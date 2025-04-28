@@ -20,16 +20,22 @@
 }
 
 #add-event-form .ui-accordion-header {
-    background: #2271b1;
+    /* background: #2271b1; */
     font-size: 14px;
     font-weight: 400;
     line-height: 1.3;
-    color: #fff;
+    /* color: #fff; */
     width: max-content;
+    margin: 0 auto;
+}
+
+.ui-accordion-content table {
+    border-top: 1px solid;
 }
 
 #add-event-form .ui-accordion-header-icon {
-    display: none
+    /* display: none */
+    padding: 0 2px;
 }
 
 .event-registrations {
@@ -147,6 +153,7 @@
 }
 
 .mail-to-all,
+.add-registration,
 .event-date {
     margin-left: 15px !important;
 }
@@ -231,6 +238,11 @@ table.dataTable thead .sorting {
 }
 
 /* Table Footer Styles */
+
+.widefat td, .widefat th {
+    vertical-align: middle;
+}
+
 .wp-list-table tfoot {
     background-color: #f9f9f9;
 }
@@ -260,6 +272,17 @@ table.dataTable thead .sorting {
     width: 6%;
 }
 
+button.button.delete-registration,
+button.button.delete-event {
+    color: #b32d2e;
+    border: none;
+}
+
+button.button.update-guest-counts {
+    background: #007cba;
+    color: #f6f7f7;
+}
+
 .trash a {
     color: #b32d2e;
     /* vertical-align: sub; */
@@ -270,11 +293,11 @@ table.dataTable thead .sorting {
     color: #2271b1;
     margin-right: 5px;
 }
+
 /* .dashicons-star-filled {
-    /* color: #646970; */
     color: #ffd700;
     margin-right: 5px;
-} */
+}  */
 
 .status-indicator {
     padding: 5px 10px;
@@ -516,4 +539,61 @@ table.dataTable thead .sorting {
     font-style: italic;
     /* color: #3c763d; */
     font-weight: bold;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+.modal-body {
+    margin-top: 20px;
+}
+
+.modal-footer {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.close-modal {
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    color: #aaa;
+}
+
+.close-modal:hover {
+    color: #000;
+}
+
+.pricing-option {
+    margin-bottom: 10px;
 }

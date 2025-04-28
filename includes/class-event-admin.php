@@ -15,6 +15,8 @@ class EventAdmin {
         add_action('wp_ajax_export_custom_tables', array($this, 'export_custom_tables'));
         add_action('wp_ajax_add_registration', array($this, 'add_registration'));
         add_action('wp_ajax_select_random_winners', array($this, 'select_random_winners'));
+        add_action('wp_ajax_update_registration_guest_counts', array($this, 'update_registration_guest_counts'));
+        add_action('wp_ajax_update_registration_guest_count', array($this, 'update_registration_guest_count'));
     }
 
     public function add_admin_menu() {
@@ -179,6 +181,7 @@ class EventAdmin {
     }
 
     public function enqueue_admin_scripts($hook) {
+        wp_enqueue_media(); // Enqueue the WordPress Media Uploader
         $screen = get_current_screen();
         $items_per_page = 10; // Default value
 
@@ -202,30 +205,15 @@ class EventAdmin {
 
         // Enqueue admin styles and scripts last
         wp_enqueue_style('event-admin-style', EVENT_ADMIN_URL . 'admin/css/admin.css', array(), '1.0.0');
-        wp_enqueue_script('event-admin-script', EVENT_ADMIN_URL . 'admin/js/admin.js', array('jquery', 'jquery-ui-accordion'), '1.0.0', true);
+        wp_enqueue_script('event-admin-script', EVENT_ADMIN_URL . 'admin/js/admin.js', array('jquery', 'jquery-ui-accordion', 'media-upload'), '1.0.0', true);
 
         wp_localize_script('event-admin-script', 'eventAdmin', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'update_registration_nonce' => wp_create_nonce('update_registration_nonce'),
             'items_per_page' => $items_per_page,
-            'export_nonce' => wp_create_nonce('export_nonce')
+            'export_nonce' => wp_create_nonce('export_nonce'),
+            'copy_event_nonce' => wp_create_nonce('copy_event_nonce'),
         ));
-    }
-    
-    public function display_events_page() {
-        global $wpdb;
-        
-        // Get only upcoming events
-        $current_date = current_time('Y-m-d');
-        
-        $events = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}sct_events 
-            WHERE DATE(CONCAT(event_date, ' ', event_time)) >= %s
-            ORDER BY event_date ASC, event_time ASC",
-            $current_date
-        ));
-        
-        include EVENT_ADMIN_PATH . 'admin/views/events-list.php';
     }
 
     public function display_registrations_page() {
@@ -236,6 +224,7 @@ class EventAdmin {
     }
 
     public function save_event() {
+        error_log('Saving event...');
         check_ajax_referer('save_event', 'event_admin_nonce');
         global $wpdb;
 
@@ -266,7 +255,19 @@ class EventAdmin {
             'children_counted_separately' => isset($_POST['children_counted_separately']) ? 1 : 0,
             'by_lottery' => isset($_POST['by_lottery']) ? 1 : 0,
             'custom_email_template' => wp_kses_post($_POST['custom_email_template']),
+            'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
+            'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
+            'unpublish_date' => !empty($_POST['unpublish_date']) ? sanitize_text_field($_POST['unpublish_date']) : null,
+            'pricing_options' => isset($_POST['pricing_options']) ? maybe_serialize($_POST['pricing_options']) : null,
         );
+
+        // Handle NULL values for publish_date and unpublish_date
+        if (empty($event_data['publish_date'])) {
+            $event_data['publish_date'] = null;
+        }
+        if (empty($event_data['unpublish_date'])) {
+            $event_data['unpublish_date'] = null;
+        }
 
         $data_format = array(
             '%s', // event_name
@@ -281,9 +282,13 @@ class EventAdmin {
             '%f', // member_price
             '%f', // non_member_price
             '%d', // member_only
-            '%d',  // children_counted_separately
+            '%d', // children_counted_separately
             '%d', // by_lottery
-            '%s'  // custom_email_template
+            '%s', // custom_email_template
+            '%s', // thumbnail_url
+            '%s', // publish_date
+            '%s',  // unpublish_date
+            '%s'   // pricing_options
         );
 
         if (isset($_POST['event_id'])) {
@@ -397,80 +402,53 @@ class EventAdmin {
             wp_send_json_error(array('message' => 'Security check failed'));
             return;
         }
-        
+
         if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => 'Unauthorized'));
             return;
         }
-    
+
         global $wpdb;
-        
-        error_log(print_r($_POST, true));
 
         $registration_id = intval($_POST['registration_id']);
-        $member_guests = intval($_POST['member_guests']);
-        $non_member_guests = intval($_POST['non_member_guests']);
-        $children_guests = intval($_POST['children_guests']);
-        $guest_count = $member_guests + $non_member_guests + $children_guests;
-        
-        if ($guest_count < 1) {
-            wp_send_json_error(array('message' => 'Guest count must be at least 1'));
+        $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
+
+        // Validate guest details
+        if (empty($guest_details)) {
+            wp_send_json_error(array('message' => 'Guest details are required.'));
             return;
         }
-        
-        $registration = $wpdb->get_row($wpdb->prepare(
-            "SELECT r.*, e.guest_capacity, e.member_price, e.non_member_price 
-             FROM {$wpdb->prefix}sct_event_registrations r 
-             JOIN {$wpdb->prefix}sct_events e ON r.event_id = e.id 
-             WHERE r.id = %d",
-            $registration_id
-        ));
-        
-        if (!$registration) {
-            wp_send_json_error(array('message' => 'Registration not found'));
+
+        // Calculate total guests
+        $total_guests = 0;
+        foreach ($guest_details as $detail) {
+            $total_guests += intval($detail['count']);
+        }
+
+        if ($total_guests < 1) {
+            wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
             return;
         }
-        
-        // Calculate total guests for this event excluding current registration
-        $total_guests = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(guest_count) 
-             FROM {$wpdb->prefix}sct_event_registrations 
-             WHERE event_id = %d AND id != %d",
-            $registration->event_id,
-            $registration_id
-        ));
-        
-        $total_guests = intval($total_guests);
-        
-        // Check if new guest count would exceed capacity
-        if ($registration->guest_capacity > 0 && ($total_guests + $guest_count) > $registration->guest_capacity) {
-            wp_send_json_error(array(
-                'message' => sprintf(
-                    'Cannot update: guest count would exceed event capacity. Maximum available spots: %d',
-                    $registration->guest_capacity - $total_guests
-                )
-            ));
-            return;
-        }
-        
+
+        // Serialize guest details for storage
+        $guest_details_serialized = maybe_serialize($guest_details);
+
         // Update the registration
         $result = $wpdb->update(
             $wpdb->prefix . 'sct_event_registrations',
             array(
-                'guest_count' => $guest_count,
-                'member_guests' => $member_guests,
-                'non_member_guests' => $non_member_guests,
-                'children_guests' => $children_guests
+                'guest_details' => $guest_details_serialized,
+                'guest_count' => $total_guests
             ),
             array('id' => $registration_id),
-            array('%d', '%d', '%d', '%d'),
+            array('%s', '%d'),
             array('%d')
         );
-        
+
         if ($result !== false) {
-            wp_send_json_success(array('message' => 'Registration updated successfully'));
+            wp_send_json_success(array('message' => 'Registration updated successfully.'));
         } else {
-            wp_send_json_error(array('message' => 'Error updating registration'));
+            wp_send_json_error(array('message' => 'Error updating registration.'));
         }
     }
     
@@ -536,19 +514,17 @@ class EventAdmin {
             '{event_name}' => $registration->event_name,
             '{event_date}' => date('F j, Y', strtotime($registration->event_date)),
             '{event_time}' => date('g:i A', strtotime($registration->event_time)),
-            '{location_name}' => $registration->location_name,
+            '{pricing_breakdown}' => '',
             '{description}' => $registration->description,
-            '{location_link}' => $registration->location_link,
+            '{location_name}' => $registration->location_name,
+            '{location_url}' => $registration->location_link,
+            '{location_link}' => '<a href="'.$registration->location_link.'">'.$registration->location_name.'</a>',
             '{guest_capacity}' => $registration->guest_capacity,
             '{max_guests_per_registration}' => $registration->max_guests_per_registration,
-            '{admin_email}' => $sct_settings['admin_email'],
-            '{member_price}' => $registration->member_price,
-            '{non_member_price}' => $registration->non_member_price,
+            '{admin_email}' => '<a href="mailto:'.$sct_settings['admin_email'].'>'.$sct_settings['admin_email'].'</a>',
             '{member_only}' => $registration->member_only ? 'Yes' : 'No',
             '{total_price}' => number_format($total_price, $sct_settings['currency_format']),
-            '{children_counted_separately}' => $registration->children_counted_separately ? 'Yes' : 'No',
             '{by_lottery}' => $registration->by_lottery ? 'Yes' : 'No',
-            '{children_guests}' => $registration->children_guests,
             '{currency_symbol}' => $sct_settings['currency_symbol'],
             '{currency_format}' => $sct_settings['currency_format'],
             '{registration_id}' => $registration->registration_id,
@@ -560,7 +536,7 @@ class EventAdmin {
 
         // Add calculation table if there is a member price or non-member price
         if ($registration->member_price > 0 || $registration->non_member_price > 0) {
-            $calculation_table = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+            $calculation_table = '<table border="1" cellpadding="5" cellspacing="0" style="width: auto; border-collapse: collapse;">';
             $calculation_table .= '<thead><tr><th>Type</th><th>Quantity</th><th>Price</th><th>Total</th></tr></thead>';
             $calculation_table .= '<tbody>';
             if ($registration->member_price > 0) {
@@ -777,6 +753,9 @@ class EventAdmin {
             ? $where_clause . " AND id = ".$event_id
             : $where_clause;
 
+        // $where_clause .= " AND (publish_date IS NULL OR publish_date <= NOW())";
+        // $where_clause .= " AND (unpublish_date IS NULL OR unpublish_date > NOW())";
+
         $sql = $wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}sct_events 
             {$where_clause}
@@ -851,6 +830,7 @@ class EventAdmin {
                "Number of Guests: {guest_count}\n" .
                "Registration Date: {registration_date}\n\n" .
                "Event Details:\n" .
+               "{pricing_breakdown}\n\n" .
                "Date: {event_date}\n" .
                "Time: {event_time}\n" .
                "Location: {location_name}";
@@ -868,8 +848,9 @@ class EventAdmin {
                "Event Date: {event_date}\n" .
                "Event Time: {event_time}\n" .
                "Location: {location_name}\n\n" .
-               "You can manage your registration here: {manage_link}\n\n" .
+               "{pricing_breakdown}\n\n" .
                "We look forward to seeing you!\n\n" .
+               "{admin_email}\n\n" .
                "Best regards,\n" .
                "The Event Team";
     }
@@ -907,7 +888,7 @@ class EventAdmin {
         }
 
         $event_id = isset($_POST['event_id']) ? intval($_POST['event_id']) : 0;
-        
+
         if (!$event_id) {
             wp_die('Invalid event ID');
         }
@@ -942,6 +923,9 @@ class EventAdmin {
             $event_id
         ), ARRAY_A);
 
+        // Unserialize pricing options
+        $pricing_options = maybe_unserialize($event->pricing_options);
+
         // Set headers for CSV download
         $filename = sanitize_title($event->event_name) . '-registrations-' . date('Y-m-d') . '.csv';
         header('Content-Type: text/csv; charset=utf-8');
@@ -951,70 +935,56 @@ class EventAdmin {
 
         // Create output stream
         $output = fopen('php://output', 'w');
-        
+
         // Add UTF-8 BOM for proper Excel handling of special characters
         fputs($output, "\xEF\xBB\xBF");
 
-        // Add CSV title spanning all columns
-        // $title = array($event->event_name . ' ' . date('Y-m-d', strtotime($event->event_date)) . ' ' . date('H:i', strtotime($event->event_time)));
-        // fputcsv($output, $title);
-        // fputcsv($output, array('')); // Empty row for spacing
-
-        // Add registration headers
-        $headers = array('Attendance', 'Name', 'Email', 'Members', 'Guests');
-        if ($event->children_counted_separately) {
-            $headers[] = 'Children';
+        // Add CSV headers
+        $headers = ['Attendance', 'Name', 'Email', 'Registration Date', 'Total Guests'];
+        if (!empty($pricing_options)) {
+            foreach ($pricing_options as $option) {
+                $headers[] = $option['name'] . ' (Count)';
+                $headers[] = $option['name'] . ' (Price)';
+            }
         }
+        $headers[] = 'Total Price';
         if ($event->by_lottery) {
-            $headers[] = 'Lottery';
-        }
-        $headers[] = 'Total Guests';
-        if ($event->member_price > 0) {
-            $headers[] = 'Member Guests (Price)';
-        }
-        if ($event->non_member_price > 0) {
-            $headers[] = 'Non-Member Guests (Price)';
-        }
-        if ($event->member_price > 0 || $event->non_member_price > 0) {
-            $headers[] = 'Total Price';
+            $headers[] = 'Winner';
         }
         $headers[] = 'Remarks';
         fputcsv($output, $headers);
 
-        // Add data rows
+        // Add registration data
         foreach ($registrations as $registration) {
-            $member_price = $event->member_price * $registration['member_guests'];
-            $non_member_price = $event->non_member_price * $registration['non_member_guests'];
-            $total_price = $member_price + $non_member_price;
-
-            $row = array(
+            $row = [
                 '', // Checkbox for attendance
                 $registration['name'],
                 $registration['email'],
-                $registration['member_guests'],
-                $registration['non_member_guests']
-            );
+                date('Y-m-d H:i', strtotime($registration['registration_date'])),
+                $registration['guest_count'],
+            ];
 
-            if ($event->children_counted_separately) {
-                $row[] = $registration['children_guests'];
+            $total_price = 0;
+
+            // Process pricing options
+            if (!empty($pricing_options)) {
+                $guest_details = maybe_unserialize($registration['guest_details']);
+                foreach ($pricing_options as $index => $option) {
+                    $count = isset($guest_details[$index]) ? intval($guest_details[$index]) : 0;
+                    $price = isset($option['price']) ? floatval($option['price']) : 0;
+                    $row[] = $count;
+                    $row[] = number_format($count * $price, 2);
+                    $total_price += $count * $price;
+                }
             }
 
+            $row[] = number_format($total_price, 2);
+
+            // Add lottery winner status if applicable
             if ($event->by_lottery) {
-                $row[] = $registration['lottery'] ? 'Yes' : 'No';
+                $row[] = $registration['is_winner'] ? 'Yes' : 'No';
             }
 
-            $total_guests = $registration['member_guests'] + $registration['non_member_guests'] + ($event->children_counted_separately ? $registration['children_guests'] : 0);
-            $row[] = $total_guests;
-
-            if ($event->member_price > 0) {
-                $row[] = "{$registration['member_guests']} ({$event->member_price}) = " . number_format($member_price, $sct_settings['currency_format']);
-            }
-            if ($event->non_member_price > 0) {
-                $row[] = "{$registration['non_member_guests']} ({$event->non_member_price}) = " . number_format($non_member_price, $sct_settings['currency_format']);
-            }
-            if ($event->member_price > 0 || $event->non_member_price > 0) {
-                $row[] = number_format($total_price, $sct_settings['currency_format']);
-            }
             $row[] = ''; // Remarks field
 
             fputcsv($output, $row);
@@ -1135,6 +1105,108 @@ class EventAdmin {
         }
     }    
 
+    public function update_registration_guest_counts() {
+        // Verify nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'update_registration_nonce')) {
+            wp_send_json_error(array('message' => 'Security check failed.'));
+            return;
+        }
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Unauthorized.'));
+            return;
+        }
+
+        global $wpdb;
+
+        $registration_id = intval($_POST['registration_id']);
+        $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
+
+        if (empty($guest_details)) {
+            wp_send_json_error(array('message' => 'Guest details are required.'));
+            return;
+        }
+
+        // Calculate total guests
+        $total_guests = 0;
+        foreach ($guest_details as $count) {
+            $total_guests += intval($count);
+        }
+        
+        error_log('Guest Details'.print_r($guest_details, true));
+
+        // Process guest details to ensure it's a simple array of integers
+        $processed_guest_details = array_map(function ($detail) {
+            return isset($detail['count']) ? intval($detail['count']) : 0;
+        }, $guest_details);
+
+        error_log('Processed Guest Details'.print_r($processed_guest_details, true));
+
+        if ($total_guests < 1) {
+            wp_send_json_error(array('message' => 'Total guest count must be at least 1.'));
+            return;
+        }
+
+        // Serialize guest details for storage
+        $guest_details_serialized = maybe_serialize($processed_guest_details);
+
+        // Update the registration in the database
+        $result = $wpdb->update(
+            "{$wpdb->prefix}sct_event_registrations",
+            array(
+                'guest_details' => $guest_details_serialized,
+                'guest_count' => $total_guests
+            ),
+            array('id' => $registration_id),
+            array('%s', '%d'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Guest counts updated successfully.'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update guest counts.'));
+        }
+    }
+
+    public function update_registration_guest_count() {
+        // Verify nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'update_registration_nonce')) {
+            wp_send_json_error(array('message' => 'Security check failed.'));
+            return;
+        }
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Unauthorized.'));
+            return;
+        }
+
+        global $wpdb;
+
+        $registration_id = intval($_POST['registration_id']);
+        $guest_count = intval($_POST['guest_count']);
+
+        if ($guest_count < 1) {
+            wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
+            return;
+        }
+
+        // Update the registration in the database
+        $result = $wpdb->update(
+            "{$wpdb->prefix}sct_event_registrations",
+            array('guest_count' => $guest_count),
+            array('id' => $registration_id),
+            array('%d'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Guest count updated successfully.'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update guest count.'));
+        }
+    }
+
     public function add_screen_options() {
         $screen = get_current_screen();
         if ($screen->id === 'toplevel_page_event-admin') {
@@ -1167,7 +1239,7 @@ class EventAdmin {
 
     public function add_registration() {
         // Verify nonce
-        if (!isset($_POST['add_registration_security']) || !wp_verify_nonce($_POST['add_registration_security'], 'add_registration_nonce')) {
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'update_registration_nonce')) {
             wp_send_json_error(array('message' => 'Security check failed'));
             return;
         }
@@ -1178,33 +1250,61 @@ class EventAdmin {
         }
 
         global $wpdb;
+
         $event_id = intval($_POST['event_id']);
         $name = sanitize_text_field($_POST['name']);
         $email = sanitize_email($_POST['email']);
-        $member_guests = isset($_POST['member_guests']) ? intval($_POST['member_guests']) : 0;
-        $non_member_guests = isset($_POST['non_member_guests']) ?  intval($_POST['non_member_guests']) : 0;
-        $children_guests = isset($_POST['children_guests']) ? intval($_POST['children_guests']) : 0;
+        $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
+        $guest_count = isset($_POST['guest_count']) ? intval($_POST['guest_count']) : 0;
 
+        error_log('Guest Details: ' . print_r($_POST['guest_details'], true));
+
+        // Handle events with and without pricing options
+        if (!empty($guest_details)) {
+            // Extract only the 'count' values from guest_details
+            $processed_guest_details = array_map(function ($detail) {
+                return isset($detail['count']) ? intval($detail['count']) : 0;
+            }, $guest_details);
+
+            // Calculate total guests from processed_guest_details
+            $total_guests = array_sum($processed_guest_details);
+
+            if ($total_guests < 1) {
+                wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
+                return;
+            }
+
+            // Serialize the processed guest details for storage
+            $guest_details_serialized = maybe_serialize($processed_guest_details);
+        } else {
+            // For events without pricing options, use guest_count directly
+            if ($guest_count < 1) {
+                wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
+                return;
+            }
+
+            $total_guests = $guest_count;
+            $guest_details_serialized = null; // No guest details for events without pricing options
+        }
+
+        // Insert registration into the database
         $result = $wpdb->insert(
             "{$wpdb->prefix}sct_event_registrations",
             array(
                 'event_id' => $event_id,
                 'name' => $name,
                 'email' => $email,
-                'member_guests' => $member_guests,
-                'non_member_guests' => $non_member_guests,
-                'children_guests' => $children_guests,
+                'guest_details' => $guest_details_serialized,
+                'guest_count' => $total_guests,
                 'registration_date' => current_time('mysql')
             ),
-            array(
-                '%d', '%s', '%s', '%d', '%d', '%d', '%s'
-            )
+            array('%d', '%s', '%s', '%s', '%d', '%s')
         );
 
         if ($result) {
-            wp_send_json_success();
+            wp_send_json_success(array('message' => 'Registration added successfully.'));
         } else {
-            wp_send_json_error(array('message' => 'Failed to add registration'));
+            wp_send_json_error(array('message' => 'Failed to add registration.'));
         }
     }
 
@@ -1293,4 +1393,163 @@ add_action('wp_ajax_update_children_guest_count', array('EventAdmin', 'update_ch
 
 // Hook into the WordPress export process
 // add_action('admin_init', [new EventAdmin(), 'export_custom_tables']);
+
+// function enqueue_media_uploader() {
+//     wp_enqueue_media();
+//     wp_enqueue_script(
+//         'event-admin-thumbnail',
+//         plugins_url('admin/js/thumbnail-uploader.js', __FILE__),
+//         array('jquery'),
+//         '1.0',
+//         true
+//     );
+// }
+// add_action('admin_enqueue_scripts', 'enqueue_media_uploader');
+
+function fetch_previous_events() {
+    // Verify nonce
+    if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'copy_previous_event')) {
+        wp_send_json_error(array('message' => 'Security check failed.'));
+        return;
+    }
+
+    global $wpdb;
+
+    $event_id = intval($_POST['event_id']);
+    if (!$event_id) {
+        wp_send_json_error(array('message' => 'Invalid event ID.'));
+        return;
+    }
+
+    // Get the event name
+    $event = $wpdb->get_row($wpdb->prepare(
+        "SELECT event_name FROM {$wpdb->prefix}sct_events WHERE id = %d",
+        $event_id
+    ));
+
+    if (!$event) {
+        wp_send_json_error(array('message' => 'Event not found.'));
+        return;
+    }
+
+    // Fetch previous events with the same name
+    $previous_events = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM {$wpdb->prefix}sct_events WHERE event_name = %s AND id != %d",
+        $event->event_name,
+        $event_id
+    ));
+
+    if (empty($previous_events)) {
+        wp_send_json_error(array('message' => 'No previous events found.'));
+        return;
+    }
+
+    // Generate HTML for the modal
+    ob_start();
+    ?>
+    <ul>
+        <?php foreach ($previous_events as $prev_event): ?>
+            <li>
+                <strong><?php echo esc_html($prev_event->event_name); ?></strong> - 
+                Date: <?php echo esc_html($prev_event->event_date); ?>
+                <button class="button copy-event-data" 
+                        data-original-event-id="<?php echo esc_attr($prev_event->id); ?>" 
+                        data-nonce="<?php echo wp_create_nonce('copy_event_data'); ?>">
+                    Copy
+                </button>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php
+    $html = ob_get_clean();
+
+    wp_send_json_success(array('html' => $html));
+}
+add_action('wp_ajax_fetch_previous_events', 'fetch_previous_events');
+
+function copy_event_data() {
+    // Verify nonce
+    if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'copy_event_data')) {
+        wp_send_json_error(array('message' => 'Security check failed.'));
+        return;
+    }
+
+    global $wpdb;
+
+    $original_event_id = intval($_POST['original_event_id']);
+    $new_event_date = sanitize_text_field($_POST['new_event_date']);
+
+    if (!$original_event_id || empty($new_event_date)) {
+        wp_send_json_error(array('message' => 'Invalid data provided.'));
+        return;
+    }
+
+    // Fetch the original event data
+    $original_event = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+        $original_event_id
+    ), ARRAY_A);
+
+    if (!$original_event) {
+        wp_send_json_error(array('message' => 'Original event not found.'));
+        return;
+    }
+
+    // Remove the original event ID and update the date
+    unset($original_event['id']);
+    $original_event['event_date'] = $new_event_date;
+
+    // Insert the new event
+    $result = $wpdb->insert("{$wpdb->prefix}sct_events", $original_event);
+
+    if ($result) {
+        wp_send_json_success(array('message' => 'Event copied successfully.'));
+    } else {
+        wp_send_json_error(array('message' => 'Failed to copy event.'));
+    }
+}
+add_action('wp_ajax_copy_event_data', 'copy_event_data');
+
+function copy_event_by_name() {
+    // Verify nonce
+    if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'copy_event_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed.'));
+        return;
+    }
+
+    global $wpdb;
+
+    $event_name = sanitize_text_field($_POST['event_name']);
+    $new_event_date = sanitize_text_field($_POST['new_event_date']);
+
+    if (empty($event_name) || empty($new_event_date)) {
+        wp_send_json_error(array('message' => 'Invalid data provided.'));
+        return;
+    }
+
+    // Fetch the most recent event with the given name
+    $original_event = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM {$wpdb->prefix}sct_events WHERE event_name = %s ORDER BY event_date DESC LIMIT 1",
+        $event_name
+    ), ARRAY_A);
+
+    if (!$original_event) {
+        wp_send_json_error(array('message' => 'Original event not found.'));
+        return;
+    }
+
+    // Remove the original event ID and update the date
+    unset($original_event['id']);
+    $original_event['event_date'] = $new_event_date;
+
+    // Insert the new event
+    $result = $wpdb->insert("{$wpdb->prefix}sct_events", $original_event);
+
+    if ($result) {
+        wp_send_json_success(array('message' => 'Event copied successfully.'));
+    } else {
+        wp_send_json_error(array('message' => 'Failed to copy event.'));
+    }
+}
+add_action('wp_ajax_copy_event_by_name', 'copy_event_by_name');
 

@@ -10,6 +10,9 @@
 
             // Generate the specific registration URL for this event
             $event_registration_url = add_query_arg('id', $event->id, $registration_url);
+
+            // Check if the event is unpublished
+            $is_unpublished = !empty($event->unpublish_date) && strtotime($event->unpublish_date) <= time();
         ?>
             <div class="event-item">
                 <h1><?php echo esc_html($event->event_name); ?></h1>
@@ -24,10 +27,10 @@
                     <h4>
                         <?php if ($event->location_link): ?>
                             <a href="<?php echo esc_url($event->location_link); ?>" target="_blank">
-                                <?php echo esc_html($event->location_name); ?>
+                                <?php echo esc_html(stripslashes($event->location_name)); ?>
                             </a>
                         <?php else: ?>
-                            <?php echo esc_html($event->location_name); ?>
+                            <?php echo esc_html(stripslashes($event->location_name)); ?>
                         <?php endif; ?>
                     </h4>
                 </div>
@@ -37,11 +40,15 @@
                     </p>
                 </div>
                 <div class="event-registration">
-                    <?php if ($event->guest_capacity == 0 || $remaining_capacity > 0): ?>
+                    <?php if ($is_unpublished): ?>
+                        <div class="registration-closed">
+                            <p>Registration for this event is closed.</p>
+                        </div>
+                    <?php elseif ($event->guest_capacity == 0 || $remaining_capacity > 0): ?>
                         <div class="event-available">
                             <?php if ($event->guest_capacity > 0): ?>
                                 <span class="event-available-text">Available Spots: <?php echo esc_html($remaining_capacity); ?></span>
-                            <?php endif;?>
+                            <?php endif; ?>
                             <a href="<?php echo esc_url($event_registration_url); ?>" class="register-button">Register</a>
                         </div>
                     <?php else: ?>
