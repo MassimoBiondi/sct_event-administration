@@ -25,6 +25,9 @@ function event_admin_activate() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
     $charset_collate = $wpdb->get_charset_collate();
+
+    // Drop the sct_event_emails table if it exists
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_event_emails");
     
     $sql = "CREATE TABLE {$wpdb->prefix}sct_events (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -38,6 +41,7 @@ function event_admin_activate() {
         max_guests_per_registration int NOT NULL,
         admin_email varchar(255) NOT NULL,
         pricing_options longtext DEFAULT NULL,
+        goods_services longtext NULL,
         member_only tinyint(1) DEFAULT 0,
         children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
@@ -45,6 +49,7 @@ function event_admin_activate() {
         thumbnail_url varchar(255) DEFAULT NULL,
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
+        payment_methods text DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
@@ -56,9 +61,12 @@ function event_admin_activate() {
         email varchar(255) NOT NULL,
         guest_count int NOT NULL,
         guest_details longtext DEFAULT NULL,
+        goods_services longtext DEFAULT NULL,
         registration_date datetime DEFAULT CURRENT_TIMESTAMP,
         is_winner tinyint(1) DEFAULT 0,
         unique_identifier varchar(255) NOT NULL,
+        payment_method varchar(255),
+        payment_status enum('pending', 'paid', 'failed') DEFAULT 'pending',
         PRIMARY KEY  (id),
         UNIQUE KEY unique_event_email (event_id, email)
     ) ENGINE=INNODB $charset_collate;";
@@ -66,17 +74,15 @@ function event_admin_activate() {
 
     $sql = "CREATE TABLE {$wpdb->prefix}sct_event_emails (
         id bigint(20) NOT NULL AUTO_INCREMENT,
-        registration_id mediumint(9) NOT NULL,
         event_id mediumint(9) NOT NULL,
         email_type varchar(50) NOT NULL,
+        recipients text NOT NULL,
         subject text NOT NULL,
         message text NOT NULL,
         sent_date datetime NOT NULL,
         status varchar(20) NOT NULL,
         PRIMARY KEY (id),
-        KEY registration_id (registration_id),
-        FOREIGN KEY (event_id) REFERENCES {$wpdb->prefix}sct_events(id) ON DELETE CASCADE,
-        FOREIGN KEY (registration_id) REFERENCES {$wpdb->prefix}sct_event_registrations(id) ON DELETE CASCADE
+        FOREIGN KEY (event_id) REFERENCES {$wpdb->prefix}sct_events(id) ON DELETE CASCADE
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
 
@@ -121,23 +127,23 @@ function event_admin_activate() {
     }
 
     // Create Management page if it doesn't exist
-    $management_query = new WP_Query(array(
+    $reservations_query = new WP_Query(array(
         'post_type' => 'page',
-        'name' => 'sct-management',
+        'name' => 'sct-reservations',
         'post_status' => 'any',
         'posts_per_page' => 1
     ));
-    $management_page = $management_query->have_posts() ? $management_query->posts[0] : null;
-    if (!$management_page) {
-        $management_page_args = array(
-            'post_title'    => 'Management',
-            'post_name'     => 'sct-management',
-            'post_content'  => '[event_management]',
+    $reservations_page = $reservations_query->have_posts() ? $reservations_query->posts[0] : null;
+    if (!$reservations_page) {
+        $reservations_page_args = array(
+            'post_title'    => 'Reservation Management',
+            'post_name'     => 'sct-reservations',
+            'post_content'  => '[reservations_management]',
             'post_status'   => 'draft',
             'post_type'     => 'page',
             'post_author'   => get_current_user_id()
         );
-        wp_insert_post($management_page_args);
+        wp_insert_post($reservations_page_args);
     }
     
 
@@ -185,6 +191,9 @@ function event_admin_update_database() {
 
     $charset_collate = $wpdb->get_charset_collate();
 
+    // Drop the sct_event_emails table if it exists
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_event_emails");
+
     // Update the sct_events table
     $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}sct_events (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -198,15 +207,17 @@ function event_admin_update_database() {
         max_guests_per_registration int NOT NULL,
         admin_email varchar(255) NOT NULL,
         pricing_options longtext DEFAULT NULL,
+        goods_services longtext NULL,
         member_only tinyint(1) DEFAULT 0,
         children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         custom_email_template longtext DEFAULT NULL,
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
+        payment_methods text DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
-    dbDelta($sql);
+    $result = dbDelta($sql);
 
     // Update the sct_event_registrations table
     $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}sct_event_registrations (
@@ -216,29 +227,29 @@ function event_admin_update_database() {
         email varchar(255) NOT NULL,
         guest_count int NOT NULL,
         guest_details longtext DEFAULT NULL,
+        goods_services longtext DEFAULT NULL,
         registration_date datetime DEFAULT CURRENT_TIMESTAMP,
         is_winner tinyint(1) DEFAULT 0,
         unique_identifier varchar(255) NOT NULL,
+        payment_method varchar(255),
+        payment_status enum('pending', 'completed', 'failed') DEFAULT 'pending',
         PRIMARY KEY  (id),
         UNIQUE KEY unique_event_email (event_id, email)
     ) ENGINE=INNODB $charset_collate;";
     $result = dbDelta($sql);
-    error_log(print_r($result, true));
 
     // Update the sct_event_emails table
     $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}sct_event_emails (
         id bigint(20) NOT NULL AUTO_INCREMENT,
-        registration_id mediumint(9) NOT NULL,
         event_id mediumint(9) NOT NULL,
         email_type varchar(50) NOT NULL,
+        recipients text NOT NULL,
         subject text NOT NULL,
         message text NOT NULL,
         sent_date datetime NOT NULL,
         status varchar(20) NOT NULL,
         PRIMARY KEY (id),
-        KEY registration_id (registration_id),
-        FOREIGN KEY (event_id) REFERENCES {$wpdb->prefix}sct_events(id) ON DELETE CASCADE,
-        FOREIGN KEY (registration_id) REFERENCES {$wpdb->prefix}sct_event_registrations(id) ON DELETE CASCADE
+        FOREIGN KEY (event_id) REFERENCES {$wpdb->prefix}sct_events(id) ON DELETE CASCADE
     ) ENGINE=INNODB $charset_collate;";
     $result = dbDelta($sql);
     error_log(print_r($result, true));
@@ -248,13 +259,14 @@ function event_admin_set_default_options() {
     $eventAdminInit = new EventAdmin();
     $sct_settings = get_option('event_admin_settings', array(
         'event_registration_page' => get_registration_page_id(),
-        'event_management_page' => get_management_page_id(),
+        'event_reservations_page' => get_reservations_page_id(),
         'admin_email' => get_option('admin_email'),
-        'currency' => 'USD',
+        'currency' => 'JPY',
         'notification_subject' => 'New Event Registration: {event_name}',
         'notification_template' => $eventAdminInit->getDefaultNotificationTemplate(),
         'confirmation_subject' => 'Registration Confirmation: {event_name}',
-        'confirmation_template' => $eventAdminInit->getDefaultConfirmationTemplate()
+        'confirmation_template' => $eventAdminInit->getDefaultConfirmationTemplate(),
+        'start_of_week' => 1,
     ));
     update_option('event_admin_settings', $sct_settings);
     unset($eventAdminInit);
@@ -275,16 +287,17 @@ function get_registration_page_id() {
     return $page_id ? (int)$page_id : null;
 }
 
-function get_management_page_id() {
+function get_reservations_page_id() {
     global $wpdb;
 
     $page_id = $wpdb->get_var($wpdb->prepare(
         "SELECT ID FROM $wpdb->posts
-        WHERE post_title = %s
+        -- WHERE post_title = %s
+        WHERE post_name = %s
         AND post_type = 'page'
         AND post_status IN ('publish', 'draft')
         LIMIT 1",
-        'Event Management'
+        'sct-reservations'
     ));
 
     return $page_id ? (int)$page_id : null;
@@ -352,3 +365,206 @@ function sct_event_dashboard_widget_display() {
 
     echo '</tbody></table>';
 }
+
+class SCT_Events_Calendar_Widget extends WP_Widget {
+    public function __construct() {
+        parent::__construct(
+            'sct_events_calendar_widget',
+            __('SCT Events Calendar', 'sct-event-administration'),
+            array('description' => __('A calendar of all SCT events', 'sct-event-administration'))
+        );
+    }
+
+    public function widget($args, $instance) {
+        global $wpdb;
+
+        // Get registration page ID and URL
+        $registration_page_id = get_option('event_admin_settings', [])["event_registration_page"];
+        $registration_url = get_permalink($registration_page_id);
+
+        // Get current month and year
+        $month = isset($_GET['sctcalmonth']) ? intval($_GET['sctcalmonth']) : date('n');
+        $year = isset($_GET['sctcalyear']) ? intval($_GET['sctcalyear']) : date('Y');
+
+        // Get first and last day of the month
+        $first_day = date('Y-m-01', strtotime("$year-$month-01"));
+        $last_day = date('Y-m-t', strtotime($first_day));
+
+        // Fetch all events for this month
+        $events = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, event_name, event_date FROM {$wpdb->prefix}sct_events WHERE event_date BETWEEN %s AND %s ORDER BY event_date ASC",
+            $first_day, $last_day
+        ));
+
+        // Group events by date
+        $events_by_date = [];
+        foreach ($events as $event) {
+            $events_by_date[$event->event_date][] = $event;
+        }
+
+        // Output widget
+        echo $args['before_widget'];
+        if (!empty($instance['title'])) {
+            echo $args['before_title'] . apply_filters('widget_title', $instance['title']) . $args['after_title'];
+        }
+
+        // Calendar navigation
+        $today_year = (int)date('Y');
+$today_month = (int)date('n');
+$prev_month = $month - 1;
+$prev_year = $year;
+if ($prev_month < 1) {
+    $prev_month = 12;
+    $prev_year--;
+}
+$next_month = $month + 1;
+$next_year = $year;
+if ($next_month > 12) {
+    $next_month = 1;
+    $next_year++;
+}
+$calendar_url = function($m, $y) {
+    return add_query_arg(array('sctcalmonth' => $m, 'sctcalyear' => $y));
+};
+
+echo '<div class="sct-events-calendar-widget">';
+echo '<div class="sct-calendar-nav">';
+
+// Only show previous month navigation if not before current month/year
+if ($year > $today_year || ($year == $today_year && $month > $today_month)) {
+    echo '<a href="' . esc_url($calendar_url($prev_month, $prev_year)) . '">&laquo;</a> ';
+} else {
+    echo '<span class="sct-calendar-nav-disabled" style="color:#ccc;opacity:0.5;cursor:not-allowed;">&laquo;</span> ';
+}
+
+echo '<span>' . date('F Y', strtotime("$year-$month-01")) . '</span>';
+echo ' <a href="' . esc_url($calendar_url($next_month, $next_year)) . '">&raquo;</a>';
+echo '</div>';
+
+// Build calendar table
+$first_weekday = date('w', strtotime($first_day));
+$days_in_month = date('t', strtotime($first_day));
+$today = date('Y-m-d');
+
+// Get start of week setting (default: 0 = Sunday)
+$start_of_week = get_option('event_admin_settings', [])['start_of_week'] ?? 0;
+
+echo '<table class="sct-calendar-table">';
+echo '<thead><tr>';
+        
+
+// Build days array starting from the selected day, using WP locale and abbreviations
+$days = [];
+for ($i = 0; $i < 7; $i++) {
+    $day_index = ($start_of_week + $i) % 7;
+    // Use WordPress translation and abbreviation for day names
+    $days[] = esc_html( mb_substr( date_i18n('l', strtotime("Sunday +{$day_index} days")), 0, 1 ) );
+}
+
+// Output table header with localized abbreviations
+foreach ($days as $i => $abbr) {
+    // Use full localized day name as title for accessibility
+    $full_day = esc_attr( date_i18n('l', strtotime("Sunday +" . (($start_of_week + $i) % 7) . " days")) );
+    echo '<th title="' . $full_day . '">' . $abbr . '</th>';
+}
+echo '</tr></thead><tbody><tr>';
+
+// Calculate the weekday of the first day of the month, adjusted for start of week
+$first_weekday = (date('w', strtotime($first_day)) - $start_of_week + 7) % 7;
+
+// Empty cells before first day
+for ($i = 0; $i < $first_weekday; $i++) {
+    echo '<td style="border:none;background:transparent;"></td>';
+}
+
+// Days of the month
+$cell = $first_weekday; // Track the cell index for correct row breaks
+$unique_id = uniqid('sctcal_');
+for ($day = 1; $day <= $days_in_month; $day++, $cell++) {
+    $date = date('Y-m-d', strtotime("$year-$month-$day"));
+    echo '<td>';
+    $events_today = !empty($events_by_date[$date]) ? $events_by_date[$date] : [];
+    $event_count = count($events_today);
+
+    if ($event_count === 1) {
+        $event = $events_today[0];
+        $event_url = add_query_arg('id', $event->id, $registration_url);
+        if ($date >= $today) {
+            // Use the day number as the link if only one event and it's in the future
+            echo '<a href="' . esc_url($event_url) . '" uk-tooltip="' . esc_attr($event->event_name) . '">' . $day . '</a>';
+        } else {
+            // Past event, not clickable
+            echo '<span title="' . esc_attr($event->event_name) . '" uk-tooltip="' . esc_attr($event->event_name) . '" >' . $day . '</span>';
+        }
+    } elseif ($event_count > 1) {
+        // Tooltip with all event names
+        $tooltip = '';
+        foreach ($events_today as $event) {
+            $tooltip .= esc_html($event->event_name) . "<br>";
+        }
+        $popup_id = $unique_id . '_' . $day;
+        // Day number as popup trigger, with tooltip listing all events
+        echo '<a href="#' . esc_attr($popup_id) . '" uk-toggle uk-tooltip="' . esc_attr(trim($tooltip)) . '">' . $day . '</a>';
+        // Popup dialog for event selection
+        echo '<div id="' . esc_attr($popup_id) . '" class="uk-flex-top" uk-modal>
+                <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical" style="min-width:220px;">
+                    <button class="uk-modal-close-default" type="button" uk-close></button>
+                    <h4>' . esc_html(date_i18n('l, F j, Y', strtotime($date))) . '</h4>
+                    <ul class="uk-list">';
+        foreach ($events_today as $event) {
+            $event_url = add_query_arg('id', $event->id, $registration_url);
+            if ($date >= $today) {
+                echo '<li><a href="' . esc_url($event_url) . '" style="text-decoration:none;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</a></li>';
+            } else {
+                echo '<li><span style="color:#bbb;cursor:not-allowed;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</span></li>';
+            }
+        }
+        echo '      </ul>
+                </div>
+            </div>';
+    } else {
+        // No events: just show the day number
+        echo $day;
+    }
+    echo '</td>';
+    // New row after every 7 cells
+    if (($cell + 1) % 7 == 0 && $day != $days_in_month) {
+        echo '</tr><tr>';
+    }
+}
+
+// Empty cells after last day
+if (($cell) % 7 != 0) {
+    for ($i = ($cell) % 7; $i < 7; $i++) {
+        echo '<td style="border:none;background:transparent;"></td>';
+    }
+}
+echo '</tr></tbody></table>';
+echo '</div>'; // .sct-events-calendar-widget
+
+        echo $args['after_widget'];
+    }
+
+    public function form($instance) {
+        $title = !empty($instance['title']) ? $instance['title'] : __('Events Calendar', 'sct-event-administration');
+        ?>
+        <p>
+            <label for="<?php echo esc_attr($this->get_field_id('title')); ?>"><?php esc_attr_e('Title:'); ?></label>
+            <input class="widefat" id="<?php echo esc_attr($this->get_field_id('title')); ?>"
+                   name="<?php echo esc_attr($this->get_field_name('title')); ?>" type="text"
+                   value="<?php echo esc_attr($title); ?>">
+        </p>
+        <?php
+    }
+
+    public function update($new_instance, $old_instance) {
+        $instance = [];
+        $instance['title'] = (!empty($new_instance['title'])) ? strip_tags($new_instance['title']) : '';
+        return $instance;
+    }
+}
+
+// Register the widget
+add_action('widgets_init', function() {
+    register_widget('SCT_Events_Calendar_Widget');
+});

@@ -151,6 +151,51 @@
                         </td>
                     </tr>
                     <tr>
+                        <th><label for="goods_services"><?php _e('Goods/Services Options', 'sct-event-administration'); ?></label></th>
+                        <td>
+                            <div id="goods-services-container">
+                                <?php if (!empty($event->goods_services)) :
+                                    $goods_services = maybe_unserialize($event->goods_services);
+                                    foreach ($goods_services as $index => $option) : ?>
+                                        <div class="goods-service-option">
+                                            <input type="text" name="goods_services[<?php echo $index; ?>][name]" value="<?php echo esc_attr($option['name']); ?>" placeholder="Item Name" required>
+                                            <input type="number" name="goods_services[<?php echo $index; ?>][price]" value="<?php echo esc_attr($option['price']); ?>" placeholder="Price (0 for free)" step="0.01" min="0" required>
+                                            <input type="number" name="goods_services[<?php echo $index; ?>][limit]" value="<?php echo esc_attr($option['limit']); ?>" placeholder="Limit (0 for unlimited)" min="0">
+                                            <button type="button" class="remove-goods-service-option button">Remove</button>
+                                        </div>
+                                    <?php endforeach;
+                                endif; ?>
+                            </div>
+                            <button type="button" id="add-goods-service-option" class="button">Add Goods/Service Option</button>
+                            <p class="description">Add goods or services with optional limits. Set the price to 0 for free. Set the limit to 0 for unlimited selection.</p>
+                        </td>
+                    </tr>
+                    <tr id="payment-methods-container" style="display: none;">
+                        <th><label for="payment_methods"><?php _e('Payment Methods', 'sct-event-administration'); ?></label></th>
+                        <td>
+                            <div id="payment-methods-list">
+                                <?php if (!empty($event->payment_methods)) :
+                                    $payment_methods = maybe_unserialize($event->payment_methods);
+                                    foreach ($payment_methods as $index => $method) : ?>
+                                        <div class="payment-method">
+                                            <select name="payment_methods[<?php echo $index; ?>][type]" required>
+                                                <option value="online" <?php selected($method['type'], 'online'); ?>>Online</option>
+                                                <option value="transfer" <?php selected($method['type'], 'transfer'); ?>>Transfer</option>
+                                                <option value="cash" <?php selected($method['type'], 'cash'); ?>>Cash</option>
+                                            </select>
+                                            <input type="text" name="payment_methods[<?php echo $index; ?>][description]" value="<?php echo esc_attr($method['description']); ?>" placeholder="Description" required>
+                                            <input type="url" name="payment_methods[<?php echo $index; ?>][link]" value="<?php echo esc_attr($method['link']); ?>" placeholder="Payment Link (for online)">
+                                            <textarea name="payment_methods[<?php echo $index; ?>][transfer_details]" placeholder="Transfer Details (for transfer)" rows="5" required><?php echo esc_textarea($method['transfer_details']); ?></textarea>
+                                            <button type="button" class="remove-payment-method button">Remove</button>
+                                        </div>
+                                    <?php endforeach;
+                                endif; ?>
+                            </div>
+                            <button type="button" id="add-payment-method" class="button">Add Payment Method</button>
+                            <p class="description">Add Payment Options for the event.</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th><label for="publish_date"><?php _e('Publish Date and Time', 'sct-event-administration'); ?></label></th>
                         <td>
                             <input type="datetime-local" id="publish_date" name="publish_date" 
@@ -203,11 +248,30 @@
                     <tr>
                         <th><label for="custom_email_template">Custom Email Template</label></th>
                         <td>
-                            <textarea id="custom_email_template" name="custom_email_template" rows="10" class="large-text"><?php echo $event ? esc_textarea($event->custom_email_template) : ''; ?></textarea>
+                            <?php 
+                            wp_editor(
+                                $event ? htmlspecialchars_decode($event->custom_email_template) : '',
+                                'confirmation_template',
+                                array(
+                                    'textarea_name' => 'custom_email_template',
+                                    'textarea_rows' => 15,
+                                    'media_buttons' => true, // Allow media uploads
+                                    'teeny' => false, // Use the full editor toolbar
+                                    'quicktags' => true, // Enable quicktags for HTML editing
+                                    'tinymce' => array(
+                                        'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,fullscreen,wp_adv',
+                                        'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
+                                        'content_css' => get_stylesheet_directory_uri() . '/editor-style.css', // Optional: Add custom editor styles
+                                    )
+                                )
+                            );
+                            ?>
+
+
+
                             <div class="form-field placeholder-info">
                                 <p><strong>Available placeholders:</strong></p>
                                 <p>
-                                    <!-- <code>{event_id}</code> - Event ID<br> -->
                                     <code>{name}</code> - Registrant's name<br>
                                     <code>{email}</code> - Registrant's email<br>
                                     <code>{guest_count}</code> - Number of guests<br>
@@ -216,12 +280,20 @@
                                     <code>{event_time}</code> - Event time<br>
                                     <code>{description}</code> - Event description<br>
                                     <code>{location_name}</code> - Event location name<br>
-                                    <code>{location_url}</code> - Event location url<br>
+                                    <code>{location_url}</code> - Event location URL<br>
                                     <code>{location_link}</code> - Event location link<br>
                                     <code>{guest_capacity}</code> - Event guest capacity<br>
-                                    <code>{member_only}</code> - Member only event<br>
+                                    <code>{member_only}</code> - Member-only event<br>
                                     <code>{total_price}</code> - Total price<br>
                                     <code>{remaining_capacity}</code> - Remaining capacity<br>
+                                    <code>{payment_status}</code> - Payment Status<br>
+                                    <code>{payment_type}</code> - Payment Type<br>
+                                    <code>{payment_name}</code> - Payment Name<br>
+                                    <code>{payment_link}</code> - Payment link<br>
+                                    <code>{payment_description}</code> - Payment description<br>
+                                    <code>{payment_method_details}</code> - Payment method details<br>
+                                    <code>{pricing_overview}</code> - Pricing overview table<br>
+                                    <code>{reservation_link}</code> - Reservation Management Link<br>
                                 </p>
                             </div>
                         </td>

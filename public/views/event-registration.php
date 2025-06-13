@@ -92,6 +92,7 @@
                 </div>
 
                 <div id="pricing-options-container">
+                    <h4 class="uk-heading-divider">Attendees</h4>
                     <?php if (!empty($event->pricing_options)) :
                         $pricing_options = maybe_unserialize($event->pricing_options);
                         foreach ($pricing_options as $index => $option) : ?>
@@ -105,7 +106,7 @@
                                         name="guest_details[<?php echo esc_attr($index); ?>][count]" 
                                         class="small-text guest-count" 
                                         min="0" 
-                                        value="0">
+                                        placeholder="0">
                                     <input type="hidden" 
                                         name="guest_details[<?php echo esc_attr($index); ?>][name]" 
                                         value="<?php echo esc_attr($option['name']); ?>">
@@ -115,31 +116,103 @@
                                 </div>
                             </div>
                         <?php endforeach; ?>
-                        <div class="uk-margin">
-                            <label for="total_price">Total Price:</label>
-                            <div class="uk-form-controls">
-                                <!-- <input type="number" class="small-text" id="total_price" name="total_price" value="0" readonly> -->
-                                 <span class="currency-symbol"><?php echo esc_attr($sct_settings['currency_symbol']); ?></span>
-                                 
-                                <input type="number" 
-                                    class="small-text" 
-                                    id="total_price" 
-                                    name="total_price" 
-                                    data-currency="<?php echo esc_attr($sct_settings['currency_symbol']); ?>" 
-                                    data-format="<?php echo esc_attr($sct_settings['currency_format']); ?>"
-                                    value="<?php echo esc_html($sct_settings['currency_symbol']); ?> <?php echo number_format(0, intval($sct_settings['currency_format'])); ?>" 
-                                    readonly>
-                            </div>
-                        </div>
                     <?php else : ?>
                         <div class="uk-margin">
                             <label for="guest_count">Number of Guests:</label>
                             <div class="uk-form-controls">
-                                <input type="number" id="guest_count" name="guest_count" class="small-text" min="0" value="0">
+                                <input type="number" id="guest_count" name="guest_count" class="small-text" min="0" placeholder="0">
                             </div>
                         </div>
                     <?php endif; ?>
+                    <div class="error">
+                        <p class="error-message">Please select at least one attendee option.</p>
+                    </div>
                 </div>
+
+                <?php
+                // Always show goods_services if available, regardless of pricing_options
+                if (!empty($event->goods_services)) :
+                    $goods_services = maybe_unserialize($event->goods_services);
+                    echo  '<h4 class="uk-heading-divider">Extras</h4>';
+                    foreach ($goods_services as $index => $option) : ?>
+                        <div class="goods-service-option uk-margin">
+                            <label for="goods_service_<?php echo esc_attr($index); ?>">
+                                <?php echo esc_html($option['name']); ?> (<?php echo esc_html($sct_settings['currency_symbol'] . $option['price']); ?>):
+                            </label>
+                            <div class="uk-form-controls">
+                                <?php if ($option['limit'] == 1) : ?>
+                                    <input type="checkbox" 
+                                           class="uk-checkbox" 
+                                           id="goods_service_<?php echo esc_attr($index); ?>" 
+                                           name="goods_services[<?php echo esc_attr($index); ?>][count]">
+                                <?php else : ?>
+                                    <input type="number" 
+                                           id="goods_service_<?php echo esc_attr($index); ?>" 
+                                           name="goods_services[<?php echo esc_attr($index); ?>][count]" 
+                                           class="small-text" 
+                                           min="0" 
+                                           max="<?php echo esc_attr($option['limit'] > 0 ? $option['limit'] : ''); ?>" 
+                                           placeholder="0">
+                                <?php endif; ?>
+                                <input type="hidden" name="goods_services[<?php echo esc_attr($index); ?>][name]" value="<?php echo esc_attr($option['name']); ?>">
+                                <input type="hidden" name="goods_services[<?php echo esc_attr($index); ?>][price]" value="<?php echo esc_attr($option['price']); ?>">
+                            </div>
+                        </div>
+                    <?php endforeach;
+                endif; ?>
+
+                <div class="uk-margin" id="pricing-overview">
+                    <h4 class="uk-heading-divider"></h4>
+                    <table class="uk-table ">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%"></th>
+                                <th style="text-align: center;">Count</th>
+                                <th style="text-align: right;">Price</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pricing-overview-body">
+                            <!-- Dynamic rows will be added here -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3"><strong>Total Price</strong></td>
+                                <td id="total-price" 
+                                    style="text-align: right;" 
+                                    data-currency-symbol="<?php echo esc_attr($sct_settings['currency_symbol']); ?>" 
+                                    data-currency-format="<?php echo esc_attr($sct_settings['currency_format']); ?>">
+                                    <?php echo esc_html($sct_settings['currency_symbol']); ?>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <?php if (!empty($event->pricing_options) || !empty($event->goods_services)) : ?>
+                    <h4 class="uk-heading-divider">Payment Method</h4>
+                    <?php if (!empty($event->payment_methods)) :
+                        $payment_methods = maybe_unserialize($event->payment_methods);
+                        foreach ($payment_methods as $index => $method) : ?>
+                            <div class="payment-method-option uk-margin">
+                                <input type="radio"
+                                       id="payment_method_<?php echo $index; ?>"
+                                       name="payment_method"
+                                       value="<?php echo esc_attr($method['type']); ?>"
+                                       required
+                                       <?php if (count($payment_methods) === 1) echo 'checked'; ?>>
+                                <label for="payment_method_<?php echo $index; ?>">
+                                    <?php echo esc_html($method['description']); ?>
+                                    <?php if (!empty($method['transfer_details'])) : ?>
+                                        <span uk-icon="info" uk-tooltip="<?php echo nl2br(esc_html($method['transfer_details'])); ?>"></span>
+                                    <?php else : ?>
+                                        <span uk-icon="info" uk-tooltip="Instruction will be included in the Email"></span>
+                                    <?php endif; ?>
+                                </label>
+                            </div>
+                        <?php endforeach;
+                    endif; ?>
+                <?php endif; ?>
 
                 <div class="uk-margin">
                     <button type="submit" class="submit-button">Submit Registration</button>

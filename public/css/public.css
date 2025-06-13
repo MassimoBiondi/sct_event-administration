@@ -1,6 +1,13 @@
+.sct-events-calendar-widget td a {
+    font-weight:bold;
+    text-decoration:none;
+    color: #ff0000;
+    cursor:pointer;
+}
+
 .event-list {
     max-width: 800px;
-    margin: 20px auto;
+    /* margin: 20px auto; */
 }
 
 .event-item {
@@ -116,7 +123,7 @@ button:hover {
 }
 
 .registration-form input {
-    width: 100%;
+    /* width: 100%; */
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -164,6 +171,31 @@ button:hover {
     border-radius: 4px;
     cursor: pointer;
 } */
+
+#pricing-overview td {
+        padding: 3px 12px;
+        text-align: left;
+        vertical-align: bottom;
+        font-size: .875rem;
+        /* font-weight: 100; */
+        color: #999;
+        text-transform: uppercase;
+}
+
+#pricing-overview tfoot tr {
+        border-top: 1px solid #000;
+        font-weight: bold;
+        /* padding: 5px 0; */
+}
+
+.payment-method-option svg {
+    height: 17px;
+    vertical-align: text-bottom;
+}
+
+.payment-method-option input {
+    vertical-align: bottom;
+}
 
 .submit-button:hover {
     background: #005177;
@@ -251,4 +283,35 @@ button:hover {
 
 .registration-form input:invalid {
     border-color: #dc3545;
+}
+
+.guest-count-error input {
+    border-color: #dc3545;
+}
+
+#pricing-options-container .error {
+    display: none;
+}
+
+#pricing-options-container.guest-count-error .error {
+    color: #dc3545;
+    display: block;
+    text-align: center;
+}
+
+.sct-events-calendar-widget { text-align: center; }
+.sct-calendar-nav { margin-bottom: 8px; }
+.sct-calendar-table { width: 100%; border-collapse: collapse; }
+.sct-calendar-table th, .sct-calendar-table td { border: 1px solid #eee; padding: 2px; vertical-align: top; }
+.sct-calendar-day { font-weight: bold; margin-bottom: 2px; }
+.sct-calendar-event { font-size: 0.95em; margin-bottom: 2px; }
+.sct-calendar-event a { display: block; color: #2271b1; text-decoration: none; }
+.sct-calendar-event a:hover { text-decoration: underline; }
+
+/* Add to your public.css */
+.email-error {
+    border: 2px solid #d63638 !important;
+    background: #fff6f6 !important;
+    border-radius: 4px;
+    transition: border 0.2s, background 0.2s;
 }

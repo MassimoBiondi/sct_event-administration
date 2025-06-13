@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Confirmed: {event_name}!</title>
+    <style>
+        /* Basic Reset & Body Styles */
+        body {
+            font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            width: 100% !important;
+        }
+
+        /* Email Container */
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,0,0,0.08); /* Slightly more prominent shadow */
+        }
+
+        /* Header Section */
+        .header {
+            background-color: #e70c0c; /* Muted blue accent */
+            color: #ffffff;
+            padding: 25px 30px; /* Increased padding */
+            text-align: center;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px; /* Larger heading */
+            font-weight: 600;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        /* Content Sections */
+        .content-section {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .content-section:last-of-type {
+            border-bottom: none;
+        }
+
+        /* Headings within sections */
+        h3 {
+            color: #333333; /* Accent color for subheadings */
+            border-bottom: 2px solid #ff0000;
+            padding-bottom: 8px; /* Increased padding */
+            margin-top: 0;
+            margin-bottom: 20px; /* Space below heading */
+            display: inline-block; /* Keeps border under text */
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* Paragraphs and Text */
+        p {
+            line-height: 1.7; /* Increased line height for readability */
+            color: #555555;
+            margin-bottom: 10px;
+        }
+        .strong-text {
+            font-weight: 600; /* Bolder for key labels */
+            color: #333333;
+        }
+
+        /* Links */
+        a {
+            color: #4a90e2;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Table Styling (Pricing Overview) */
+        .table-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0; /* Light border around table */
+            border-radius: 6px;
+            overflow: hidden; /* Ensures rounded corners */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0; /* Lighter border for cells */
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f8f8;
+            color: #333333;
+            font-weight: 600;
+        }
+        .total-row td {
+            border-top: 2px solid #ff0000; /* Accent line for total */
+            font-weight: bold;
+            color: #333333;
+        }
+        .text-right {
+            text-align: right;
+        }
+
+        /* Payment Details Box */
+        .payment-details-box {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            padding: 18px; /* Increased padding */
+            border-radius: 6px;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        .payment-details-box ul {
+            list-style: none; /* No bullets */
+            padding: 0;
+            margin: 10px 0;
+        }
+        .payment-details-box ul li {
+            margin-bottom: 8px;
+            color: #444444;
+        }
+        .payment-details-box ul li strong {
+            color: #333333;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 25px 30px;
+            text-align: center;
+            color: #777777;
+            font-size: 0.95em;
+            background-color: #f0f0f0; /* Light background for footer */
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .footer p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media only screen and (max-width: 620px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .content-section, .header, .footer {
+                padding: 15px 20px !important;
+            }
+            h1 {
+                font-size: 24px !important;
+            }
+            h3 {
+                font-size: 18px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">

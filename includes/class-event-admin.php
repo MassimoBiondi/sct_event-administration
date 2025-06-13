@@ -17,6 +17,8 @@ class EventAdmin {
         add_action('wp_ajax_select_random_winners', array($this, 'select_random_winners'));
         add_action('wp_ajax_update_registration_guest_counts', array($this, 'update_registration_guest_counts'));
         add_action('wp_ajax_update_registration_guest_count', array($this, 'update_registration_guest_count'));
+        add_action('wp_ajax_update_payment_status', array($this, 'update_payment_status'));
+        add_action('wp_ajax_view_registration_details', array($this, 'view_registration_details'));
     }
 
     public function add_admin_menu() {
@@ -117,56 +119,90 @@ class EventAdmin {
     public function sct_render_emails_page() {
         global $wpdb;
 
-        $emails = $wpdb->get_results("
-            SELECT 
-                e.id,
-                e.event_id,
-                e.email_type,
-                e.subject,
-                e.message AS email_content,
-                e.sent_date,
-                e.status,
-                ev.event_name,
-                CASE 
-                    WHEN e.email_type = 'mass_email' THEN 
-                        CONCAT('Sent to ', COUNT(*), ' recipients')
-                    ELSE reg.email
-                END AS recipient_email,
-                CASE 
-                    WHEN e.email_type = 'mass_email' THEN 
-                        GROUP_CONCAT(
-                            CONCAT(reg.email, ':', e.status) 
-                            ORDER BY reg.email ASC 
-                            SEPARATOR '|'
-                        )
-                    ELSE NULL
-                END AS all_recipients,
-                CASE 
-                    WHEN e.email_type = 'mass_email' THEN 
-                        MIN(e.sent_date)
-                    ELSE e.sent_date
-                END AS grouped_sent_date,
-                SUM(CASE WHEN e.status = 'failed' THEN 1 ELSE 0 END) as failed_count,
-                COUNT(*) as total_count
-            FROM {$wpdb->prefix}sct_event_emails e
-            LEFT JOIN {$wpdb->prefix}sct_events ev ON e.event_id = ev.id
-            LEFT JOIN {$wpdb->prefix}sct_event_registrations reg ON e.registration_id = reg.id
-            GROUP BY 
-                CASE 
-                    WHEN e.email_type = 'mass_email' THEN 
-                        CONCAT(
-                            e.event_id, 
-                            '_', 
-                            e.subject, 
-                            '_', 
-                            FLOOR(UNIX_TIMESTAMP(e.sent_date)/300)
-                        )
-                    ELSE e.id
-                END
-            ORDER BY grouped_sent_date DESC
-        ");
+        // Get all events (upcoming and optionally past)
+        $current_date = current_time('Y-m-d');
+        $show_past = isset($_GET['show_past']) && $_GET['show_past'] === '1';
 
-        // error_log(print_r($emails, true));
+        // Get all events for dropdown
+        $all_events = $wpdb->get_results("SELECT id, event_name, event_date FROM {$wpdb->prefix}sct_events ORDER BY event_date DESC");
+
+        // Get upcoming events (or all if show_past is set)
+        if ($show_past) {
+            $events = $all_events;
+        } else {
+            $events = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, event_name, event_date FROM {$wpdb->prefix}sct_events WHERE event_date >= %s ORDER BY event_date ASC",
+                $current_date
+            ));
+        }
+
+        // Prepare emails array
+        $emails = [];
+        foreach ($events as $event) {
+            // Fetch emails for this event
+            $event_emails = $wpdb->get_results($wpdb->prepare(
+                "SELECT 
+                    id,
+                    event_id,
+                    email_type,
+                    recipients,
+                    subject,
+                    message AS email_content,
+                    sent_date,
+                    status
+                FROM {$wpdb->prefix}sct_event_emails
+                WHERE event_id = %d
+                ORDER BY sent_date DESC",
+                $event->id
+            ));
+
+            // Group mass emails by subject and 5-min window
+            $mass_groups = [];
+            foreach ($event_emails as $email) {
+                if ($email->email_type === 'mass_email') {
+                    $group_key = md5($email->subject . floor(strtotime($email->sent_date)/300));
+                    if (!isset($mass_groups[$group_key])) {
+                        $mass_groups[$group_key] = [
+                            'id' => $email->id,
+                            'event_id' => $email->event_id,
+                            'event_name' => $event->event_name,
+                            'email_type' => 'mass_email',
+                            'subject' => $email->subject,
+                            'email_content' => $email->email_content,
+                            'grouped_sent_date' => $email->sent_date,
+                            'recipient_email' => [],
+                            'all_recipients' => [],
+                            'status' => [],
+                            'failed_count' => 0,
+                        ];
+                    }
+                    $mass_groups[$group_key]['recipient_email'][] = $email->recipients;
+                    $mass_groups[$group_key]['all_recipients'][] = $email->recipients . ':' . $email->status;
+                    $mass_groups[$group_key]['status'][] = $email->status;
+                    if ($email->status === 'failed') {
+                        $mass_groups[$group_key]['failed_count']++;
+                    }
+                } else {
+                    $email->event_name = $event->event_name;
+                    $email->recipient_email = $email->recipients;
+                    $email->grouped_sent_date = $email->sent_date;
+                    $emails[] = $email;
+                }
+            }
+            // Add grouped mass emails as single rows
+            foreach ($mass_groups as $group) {
+                $group['recipient_email'] = implode(', ', $group['recipient_email']);
+                $group['all_recipients'] = implode('|', $group['all_recipients']);
+                // Use 'sent' if all sent, 'failed' if any failed
+                $group['status'] = in_array('failed', $group['status']) ? 'failed' : 'sent';
+                $emails[] = (object)$group;
+            }
+        }
+
+        // Sort emails by sent date descending
+        usort($emails, function($a, $b) {
+            return strtotime($b->grouped_sent_date) - strtotime($a->grouped_sent_date);
+        });
 
         include EVENT_ADMIN_PATH . 'admin/views/emails.php';
     }
@@ -202,6 +238,13 @@ class EventAdmin {
             wp_enqueue_style('datatables-css', 'https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css', array(), '1.11.5');
         }
         wp_enqueue_style('jquery-ui-css', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
+
+        wp_enqueue_style('uikit-css', 'https://cdn.jsdelivr.net/npm/uikit@3.16.3/dist/css/uikit.min.css', array(), '3.16.3');
+
+        // Enqueue UIkit JavaScript
+        wp_enqueue_script('uikit-js', 'https://cdn.jsdelivr.net/npm/uikit@3.16.3/dist/js/uikit.min.js', array('jquery'), '3.16.3', true);
+        wp_enqueue_script('uikit-icons-js', 'https://cdn.jsdelivr.net/npm/uikit@3.16.3/dist/js/uikit-icons.min.js', array('uikit-js'), '3.16.3', true);
+    
 
         // Enqueue admin styles and scripts last
         wp_enqueue_style('event-admin-style', EVENT_ADMIN_URL . 'admin/css/admin.css', array(), '1.0.0');
@@ -249,17 +292,28 @@ class EventAdmin {
             'guest_capacity' => intval($_POST['guest_capacity']),
             'max_guests_per_registration' => intval($_POST['max_guests_per_registration']),
             'admin_email' => sanitize_email($_POST['admin_email']),
-            'member_price' => floatval($_POST['member_price']),
-            'non_member_price' => floatval($_POST['non_member_price']),
             'member_only' => isset($_POST['member_only']) ? 1 : 0,
             'children_counted_separately' => isset($_POST['children_counted_separately']) ? 1 : 0,
             'by_lottery' => isset($_POST['by_lottery']) ? 1 : 0,
-            'custom_email_template' => wp_kses_post($_POST['custom_email_template']),
+            'custom_email_template' => isset($_POST['custom_email_template']) ? wp_unslash($_POST['custom_email_template']) : null,
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
             'unpublish_date' => !empty($_POST['unpublish_date']) ? sanitize_text_field($_POST['unpublish_date']) : null,
             'pricing_options' => isset($_POST['pricing_options']) ? maybe_serialize($_POST['pricing_options']) : null,
         );
+
+        if (isset($_POST['payment_methods']) && is_array($_POST['payment_methods'])) {
+            $payment_methods = array_map(function ($method) {
+                return [
+                    'type' => sanitize_text_field($method['type']),
+                    'description' => sanitize_text_field($method['description']),
+                    'link' => isset($method['link']) ? esc_url_raw($method['link']) : '',
+                    'transfer_details' => isset($method['transfer_details']) ? sanitize_textarea_field($method['transfer_details']) : '',
+                ];
+            }, $_POST['payment_methods']);
+
+            $event_data['payment_methods'] = maybe_serialize($payment_methods);
+        }
 
         // Handle NULL values for publish_date and unpublish_date
         if (empty($event_data['publish_date'])) {
@@ -300,6 +354,35 @@ class EventAdmin {
                 $data_format,
                 array('%d')
             );
+
+            // Process Goods/Service Options
+            if (isset($_POST['goods_services']) && is_array($_POST['goods_services'])) {
+                $goods_services = array_map(function ($item) {
+                    return [
+                        'name' => sanitize_text_field($item['name']),
+                        'price' => floatval($item['price']),
+                        'limit' => intval($item['limit']),
+                    ];
+                }, $_POST['goods_services']);
+
+                // Serialize and save to the database
+                $wpdb->update(
+                    "{$wpdb->prefix}sct_events",
+                    ['goods_services' => maybe_serialize($goods_services)],
+                    ['id' => intval($_POST['event_id'])],
+                    ['%s'],
+                    ['%d']
+                );
+            } else {
+                // If no goods/services are provided, set the column to NULL
+                $wpdb->update(
+                    "{$wpdb->prefix}sct_events",
+                    ['goods_services' => null],
+                    ['id' => intval($_POST['event_id'])],
+                    ['%s'],
+                    ['%d']
+                );
+            }
         } else {
             // Insert new event
             $result = $wpdb->insert(
@@ -498,76 +581,135 @@ class EventAdmin {
 
     private function send_email($registration, $subject, $body_template, $headers, $is_mass_email, $sct_settings) {
         global $wpdb;
+        // Fetch event data for this registration
+        $event_data = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $registration->event_id
+        ), ARRAY_A);
 
-        // Calculate total price
-        $total_price = ($registration->member_price * $registration->member_guests) + ($registration->non_member_price * $registration->non_member_guests);
+        // Prepare placeholder data
+        $placeholder_data = array_merge((array)$registration, (array)$event_data);
 
-        // Replace placeholders
-        $placeholders = array(
-            '{event_id}' => $registration->event_id,
-            '{name}' => $registration->name,
-            '{email}' => $registration->email,
-            '{guest_count}' => $registration->guest_count,
-            '{member_guests}' => $registration->member_guests,
-            '{non_member_guests}' => $registration->non_member_guests,
-            '{registration_date}' => date('F j, Y g:i A', strtotime($registration->registration_date)),
-            '{event_name}' => $registration->event_name,
-            '{event_date}' => date('F j, Y', strtotime($registration->event_date)),
-            '{event_time}' => date('g:i A', strtotime($registration->event_time)),
-            '{pricing_breakdown}' => '',
-            '{description}' => $registration->description,
-            '{location_name}' => $registration->location_name,
-            '{location_url}' => $registration->location_link,
-            '{location_link}' => '<a href="'.$registration->location_link.'">'.$registration->location_name.'</a>',
-            '{guest_capacity}' => $registration->guest_capacity,
-            '{max_guests_per_registration}' => $registration->max_guests_per_registration,
-            '{admin_email}' => '<a href="mailto:'.$sct_settings['admin_email'].'>'.$sct_settings['admin_email'].'</a>',
-            '{member_only}' => $registration->member_only ? 'Yes' : 'No',
-            '{total_price}' => number_format($total_price, $sct_settings['currency_format']),
-            '{by_lottery}' => $registration->by_lottery ? 'Yes' : 'No',
-            '{currency_symbol}' => $sct_settings['currency_symbol'],
-            '{currency_format}' => $sct_settings['currency_format'],
-            '{registration_id}' => $registration->registration_id,
-            '{registration_link}' => $sct_settings['event_registration_page'] . '?registration_id=' . $registration->registration_id,
-            '{manage_link}' => $sct_settings['event_management_page'] . '?uid=' . $registration->unique_id
-        );
+        // Pricing breakdown and total price
+        $pricing_breakdown = '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+        $pricing_breakdown .= '<thead><tr><th style="border: 1px solid #ddd; padding: 8px;">&nbsp;</th><th style="border: 1px solid #ddd; padding: 8px;">Count</th><th style="border: 1px solid #ddd; padding: 8px;">Price</th><th style="border: 1px solid #ddd; padding: 8px;">Total</th></tr></thead>';
+        $pricing_breakdown .= '<tbody>';
+        $total_price = 0;
 
-        $personalized_body = str_replace(array_keys($placeholders), array_values($placeholders), $body_template);
+        $currency_symbol = $sct_settings['currency_symbol'];
+        $currency_format = intval($sct_settings['currency_format']);
 
-        // Add calculation table if there is a member price or non-member price
-        if ($registration->member_price > 0 || $registration->non_member_price > 0) {
-            $calculation_table = '<table border="1" cellpadding="5" cellspacing="0" style="width: auto; border-collapse: collapse;">';
-            $calculation_table .= '<thead><tr><th>Type</th><th>Quantity</th><th>Price</th><th>Total</th></tr></thead>';
-            $calculation_table .= '<tbody>';
-            if ($registration->member_price > 0) {
-                $calculation_table .= sprintf(
-                    '<tr><td>Members</td><td>%d</td><td>%s%.'.$sct_settings['currency_format'].'f</td><td>%s%.'.$sct_settings['currency_format'].'f</td></tr>',
-                    $registration->member_guests,
-                    $sct_settings['currency_symbol'],
-                    $registration->member_price,
-                    $sct_settings['currency_symbol'],
-                    $registration->member_price * $registration->member_guests
-                );
+        // Pricing options
+        if (!empty($registration->guest_details)) {
+            $guest_details = maybe_unserialize($registration->guest_details);
+            foreach ($guest_details as $detail) {
+                $count = intval($detail['count']);
+                $name = esc_html($detail['name']);
+                $price = floatval($detail['price']);
+                $total = $count * $price;
+                if ($count > 0) {
+                    $pricing_breakdown .= sprintf(
+                        '<tr><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%d</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s %s</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s %s</td></tr>',
+                        $name,
+                        $count,
+                        esc_html($currency_symbol),
+                        number_format($price, $currency_format),
+                        esc_html($currency_symbol),
+                        number_format($total, $currency_format)
+                    );
+                    $total_price += $total;
+                }
             }
-            if ($registration->non_member_price > 0) {
-                $calculation_table .= sprintf(
-                    '<tr><td>Guests</td><td>%d</td><td>%s%.'.$sct_settings['currency_format'].'f</td><td>%s%.'.$sct_settings['currency_format'].'f</td></tr>',
-                    $registration->non_member_guests,
-                    $sct_settings['currency_symbol'],
-                    $registration->non_member_price,
-                    $sct_settings['currency_symbol'],
-                    $registration->non_member_price * $registration->non_member_guests
-                );
-            }
-            $calculation_table .= sprintf(
-                '<tr><td colspan="3" style="text-align: right;"><strong>Total</strong></td><td><strong>%s%.'.$sct_settings['currency_format'].'f</strong></td></tr>',
-                $sct_settings['currency_symbol'],
-                $total_price
-            );
-            $calculation_table .= '</tbody></table>';
-
-            $personalized_body .= '<br><br>' . $calculation_table;
         }
+
+        // Goods/services
+        if (!empty($registration->goods_services)) {
+            $goods_services = maybe_unserialize($registration->goods_services);
+            foreach ($goods_services as $service) {
+                $count = intval($service['count']);
+                $name = esc_html($service['name']);
+                $price = floatval($service['price']);
+                $total = $count * $price;
+                if ($count > 0) {
+                    $pricing_breakdown .= sprintf(
+                        '<tr><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%d</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s %s</td><td style="border-bottom: 1px solid #ddd; padding: 8px;">%s %s</td></tr>',
+                        $name,
+                        $count,
+                        esc_html($currency_symbol),
+                        number_format($price, $currency_format),
+                        esc_html($currency_symbol),
+                        number_format($total, $currency_format)
+                    );
+                    $total_price += $total;
+                }
+            }
+        }
+
+        // Add total row
+        $pricing_breakdown .= sprintf(
+            '<tr><td colspan="3" style="border-top: 1px solid #ddd; padding: 8px; text-align: right;"><strong>Total</strong></td><td style="border-top: 1px solid #ddd; border-bottom: 2px solid #ddd; padding: 8px;"><strong>%s %s</strong></td></tr>',
+            esc_html($currency_symbol),
+            number_format($total_price, $currency_format)
+        );
+        $pricing_breakdown .= '</tbody></table>';
+
+        if (empty($registration->guest_details) && $registration->guest_count > 0) {
+            $pricing_breakdown = '<strong>Number of Guests:</strong> ' . $registration->guest_count;
+        }
+
+        $placeholder_data['pricing_overview'] = $pricing_breakdown;
+        $placeholder_data['total_price'] = sprintf('%s %s', esc_html($currency_symbol), number_format($total_price, $currency_format));
+
+        // Payment method details
+        $payment_methods = isset($event_data['payment_methods']) ? maybe_unserialize($event_data['payment_methods']) : array();
+        $selected_payment_method = array();
+        if (!empty($payment_methods) && !empty($registration->payment_method)) {
+            $selected_payment_method = array_filter($payment_methods, function ($method) use ($registration) {
+                return $method['type'] === $registration->payment_method;
+            });
+        }
+        if (!empty($selected_payment_method)) {
+            $selected_payment_method = reset($selected_payment_method);
+            $placeholder_data['payment_type'] = $selected_payment_method['type'];
+            $placeholder_data['payment_name'] = $selected_payment_method['description'];
+            $placeholder_data['payment_link'] = $selected_payment_method['link'];
+            $placeholder_data['payment_description'] = $selected_payment_method['transfer_details'];
+
+            $placeholder_data['payment_method_details'] = '<div class="content-section"><h3>Payment Information</h3>';
+            if ($selected_payment_method['type'] === 'online') {
+                $placeholder_data['payment_method_details'] .= sprintf(
+                    '<div class="payment-details-box">To complete your payment securely online, please click the link below:'.
+                    '<a style="font-weight: bold;" href="%s" target="_blank" rel="noopener">Complete Payment Online Here</a></div>',
+                    esc_html($selected_payment_method['link'])
+                );
+            } elseif ($selected_payment_method['type'] === 'transfer') {
+                $placeholder_data['payment_method_details'] .= sprintf(
+                    '<p>Please transfer the total amount to the following bank account details:</p>'.
+                    '<div class="payment-details-box">'.
+                    '<strong>%s</strong>'.
+                    '</div>'.
+                    '<p>Kindly include your name and "{event_name}" as the reference for the bank transfer.</p>',
+                    nl2br(esc_html($selected_payment_method['transfer_details']))
+                );
+            } elseif ($selected_payment_method['type'] === 'cash') {
+                $placeholder_data['payment_method_details'] .= sprintf(
+                    '<div class="payment-details-box">%s</div>',
+                    nl2br(esc_html($selected_payment_method['transfer_details']))
+                );
+            } else {
+                $placeholder_data['payment_method_details'] .= '<p>Payment method not specified.</p>';
+            }
+            $placeholder_data['payment_method_details'] .= '</div>';
+
+            // Replace placeholders in payment_method_details
+            $placeholder_data['payment_method_details'] = $this->replace_email_placeholders(
+                $placeholder_data['payment_method_details'],
+                $placeholder_data
+            );
+        }
+
+        // Replace placeholders in the email body
+        $personalized_body = $this->replace_email_placeholders($body_template, $placeholder_data);
 
         // Send the email
         $sent = wp_mail(
@@ -577,32 +719,80 @@ class EventAdmin {
             $headers
         );
 
-        if ($sent) {
-            $wpdb->insert(
-                $wpdb->prefix . 'sct_event_emails',
-                array(
-                    'registration_id' => $registration->registration_id,
-                    'event_id' => $registration->event_id,
-                    'email_type' => ($is_mass_email) ? 'mass_email' : 'individual_email',
-                    'subject' => $subject,
-                    'message' => $personalized_body,
-                    'sent_date' => current_time('mysql'),
-                    'status' => 'sent'
-                ),
-                array(
-                    '%d', // registration_id
-                    '%d', // event_id
-                    '%s', // email_type
-                    '%s', // subject
-                    '%s', // message
-                    '%s', // sent_date
-                    '%s'  // status
-                )
-            );
-            return true;
+        if ($is_mass_email) {
+            $email_type = 'mass_email';
         } else {
-            return false;
+            $email_type = 'individual_email';
         }
+        
+        $this->log_email($event_data['id'], $email_type, $registration->email, $subject, wpautop($personalized_body), $sent ? 'sent' : 'failed');
+
+        // Optionally log or store the email as needed...
+
+        return $sent;
+    }
+
+    private function log_email($event_id, $email_type, $recipient_email, $subject, $message, $status = 'sent') {
+        global $wpdb;
+        $wpdb->insert(
+            "{$wpdb->prefix}sct_event_emails",
+            array(
+                'event_id'    => $event_id,
+                'email_type'  => $email_type,
+                'recipients'  => $recipient_email,
+                'subject'     => $subject,
+                'message'     => $message,
+                'sent_date'   => current_time('mysql'),
+                'status'      => $status,
+            ),
+            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
+        );
+    }
+
+    // Helper for placeholder replacement (if not already present)
+    private function replace_email_placeholders($template, $data) {
+        $sct_settings = get_option('event_admin_settings', array(
+            'event_registration_page' => get_option('event_registration_page'),
+            'event_management_page' => get_option('event_management_page'),
+            'admin_email' => get_option('admin_email'),
+            'currency' => get_option('currency'),
+            'currency_symbol' => get_option('currency_symbol'),
+            'currency_format' => get_option('currency_format'),
+            'notification_subject' => 'New Event Registration: {event_name}',
+            'notification_template' => $this->get_default_notification_template(),
+            'confirmation_subject' => 'Registration Confirmation: {event_name}',
+            'confirmation_template' => $this->get_default_confirmation_template()
+        ));
+
+        $placeholders = array(
+            '{event_name}' => $data['event_name'] ?? '',
+            '{name}' => $data['name'] ?? '',
+            '{email}' => $data['email'] ?? '',
+            '{guest_count}' => $data['guest_count'] ?? '',
+            '{registration_date}' => $data['registration_date'] ?? '',
+            '{event_date}' => $data['event_date'] ?? '',
+            '{event_time}' => $data['event_time'] ?? '',
+            '{location_name}' => esc_html(stripslashes($data['location_name'])) ?? '',
+            '{location_url}' => $data['location_link'] ?? '',
+            '{location_link}' => '<a href="' . $data['location_link'] . '" target="_blank" rel="noopener">View on Map</a>',
+            '{pricing_breakdown}' => $data['pricing_breakdown'] ?? '',
+            '{total_price}' => $data['total_price'] ?? '',
+            '{admin_email}' => '<a href="mailto:' . $sct_settings['admin_email'] . '">' . $sct_settings['admin_email'] . '</a>',
+            '{manage_link}' => $data['manage_link'] ?? '',
+            '{description}' => $data['description'] ?? '',
+            '{guest_capacity}' => $data['guest_capacity'] ?? 'Unlimited',
+            '{member_only}' => isset($data['member_only']) ? ($data['member_only'] ? 'Yes' : 'No') : 'No',
+            '{remaining_capacity}' => $data['remaining_capacity'] ?? 'N/A',
+            '{payment_status}' => $data['payment_status'] ?? 'Pending',
+            '{payment_type}' => $data['payment_type'] ?? 'N/A',
+            '{payment_name}' => $data['payment_name'] ?? 'N/A',
+            '{payment_link}' => $data['payment_link'] ?? 'N/A',
+            '{payment_description}' => $data['payment_description'] ?? 'N/A',
+            '{payment_method_details}' => $data['payment_method_details'] ?? '',
+            '{pricing_overview}' => $data['pricing_overview'] ?? ''
+        );
+
+        return str_replace(array_keys($placeholders), array_values($placeholders), $template);
     }
 
     public function send_registration_email() {
@@ -626,7 +816,8 @@ class EventAdmin {
             'notification_subject' => 'New Event Registration: {event_name}',
             'notification_template' => $this->get_default_notification_template(),
             'confirmation_subject' => 'Registration Confirmation: {event_name}',
-            'confirmation_template' => $this->get_default_confirmation_template()
+            'confirmation_template' => $this->get_default_confirmation_template(),
+            'start_of_week' => get_option('start_of_week', 'monday'),
         ));
 
         $event_data = $wpdb->get_row($wpdb->prepare(
@@ -729,7 +920,8 @@ class EventAdmin {
                 wp_send_json_error(array('message' => 'Registration not found'));
                 return;
             }
-    
+            
+            $registration->id = $registration_id; // Ensure registration ID is set for email logging
             if ($this->send_email($registration, $subject, $body_template, $headers, $is_mass_email, $sct_settings)) {
                 wp_send_json_success(array('message' => 'Email sent successfully'));
             } else {
@@ -876,7 +1068,8 @@ class EventAdmin {
             'notification_subject' => sanitize_text_field($_POST['notification_subject']),
             'notification_template' => wp_kses_post($_POST['notification_template']),
             'confirmation_subject' => sanitize_text_field($_POST['confirmation_subject']),
-            'confirmation_template' => wp_kses_post($_POST['confirmation_template'])
+            'confirmation_template' => wp_kses_post(stripslashes($_POST['confirmation_template'])),
+            'start_of_week' => intval($_POST['start_of_week'])
         );
     
         update_option('event_admin_settings', $sct_settings);
@@ -923,10 +1116,11 @@ class EventAdmin {
             $event_id
         ), ARRAY_A);
 
-        // Unserialize pricing options
-        $pricing_options = maybe_unserialize($event->pricing_options);
+        // Unserialize pricing options and goods/services
+        $pricing_options = !empty($event->pricing_options) ? maybe_unserialize($event->pricing_options) : [];
+        $goods_services_options = !empty($event->goods_services) ? maybe_unserialize($event->goods_services) : [];
 
-        // Set headers for CSV download
+        // Set headers for CSV download (landscape: more columns, less rows)
         $filename = sanitize_title($event->event_name) . '-registrations-' . date('Y-m-d') . '.csv';
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -939,15 +1133,31 @@ class EventAdmin {
         // Add UTF-8 BOM for proper Excel handling of special characters
         fputs($output, "\xEF\xBB\xBF");
 
-        // Add CSV headers
+        // Build CSV headers
         $headers = ['Attendance', 'Name', 'Email', 'Registration Date', 'Total Guests'];
-        if (!empty($pricing_options)) {
+
+        $has_pricing_options = !empty($pricing_options);
+        $has_goods_services = !empty($goods_services_options);
+
+        // Only show pricing_options columns if available
+        if ($has_pricing_options) {
             foreach ($pricing_options as $option) {
                 $headers[] = $option['name'] . ' (Count)';
-                $headers[] = $option['name'] . ' (Price)';
             }
         }
-        $headers[] = 'Total Price';
+
+        // Only show goods_services columns if available
+        if ($has_goods_services) {
+            foreach ($goods_services_options as $service) {
+                $headers[] = $service['name'] . ' (Count)';
+            }
+        }
+
+        // Only add Total Price column if at least one of pricing_options or goods_services is available
+        if ($has_pricing_options || $has_goods_services) {
+            $headers[] = 'Total Price';
+        }
+
         if ($event->by_lottery) {
             $headers[] = 'Winner';
         }
@@ -966,28 +1176,67 @@ class EventAdmin {
 
             $total_price = 0;
 
-            // Process pricing options
-            if (!empty($pricing_options)) {
-                $guest_details = maybe_unserialize($registration['guest_details']);
+            // Pricing option counts
+            $guest_details = !empty($registration['guest_details']) ? maybe_unserialize($registration['guest_details']) : [];
+            if ($has_pricing_options) {
                 foreach ($pricing_options as $index => $option) {
-                    $count = isset($guest_details[$index]) ? intval($guest_details[$index]) : 0;
-                    $price = isset($option['price']) ? floatval($option['price']) : 0;
+                    $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
                     $row[] = $count;
-                    $row[] = number_format($count * $price, 2);
+                    $price = isset($option['price']) ? floatval($option['price']) : 0;
                     $total_price += $count * $price;
                 }
             }
 
-            $row[] = number_format($total_price, 2);
+            // Goods/services counts
+            $goods_services = !empty($registration['goods_services']) ? maybe_unserialize($registration['goods_services']) : [];
+            if ($has_goods_services) {
+                foreach ($goods_services_options as $index => $service) {
+                    $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+                    $row[] = $count;
+                    $price = isset($service['price']) ? floatval($service['price']) : 0;
+                    $total_price += $count * $price;
+                }
+            }
+
+            // Only add Total Price value if the column exists
+            if ($has_pricing_options || $has_goods_services) {
+                $row[] = number_format($total_price, 2);
+            }
 
             // Add lottery winner status if applicable
             if ($event->by_lottery) {
-                $row[] = $registration['is_winner'] ? 'Yes' : 'No';
+                $row[] = !empty($registration['is_winner']) ? 'Yes' : 'No';
             }
 
             $row[] = ''; // Remarks field
 
             fputcsv($output, $row);
+        }
+
+        // Add a blank row before the footer
+        fputcsv($output, []);
+
+        // Add a footer row for pricing references
+        $footer = ['Pricing Reference', '', '', '', ''];
+
+        // Pricing options prices
+        if ($has_pricing_options) {
+            foreach ($pricing_options as $option) {
+                $footer[] = isset($option['price']) ? $event->currency_symbol . ' ' . number_format($option['price'], $event->currency_format) : '';
+            }
+        }
+
+        // Goods/services prices
+        if ($has_goods_services) {
+            foreach ($goods_services_options as $service) {
+                $footer[] = isset($service['price']) ? $event->currency_symbol . ' ' . number_format($service['price'], $event->currency_format) : '';
+            }
+        }
+
+        // Only pad and output footer if at least one of pricing_options or goods_services is available
+        if ($has_pricing_options || $has_goods_services) {
+            $footer = array_pad($footer, count($headers), '');
+            fputcsv($output, $footer);
         }
 
         fclose($output);
@@ -1121,44 +1370,38 @@ class EventAdmin {
 
         $registration_id = intval($_POST['registration_id']);
         $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
+        $goods_services = isset($_POST['goods_services']) ? $_POST['goods_services'] : null;
 
-        if (empty($guest_details)) {
-            wp_send_json_error(array('message' => 'Guest details are required.'));
+        if (empty($guest_details) && empty($goods_services)) {
+            wp_send_json_error(array('message' => 'Guest details and goods/services are required.'));
             return;
         }
 
         // Calculate total guests
         $total_guests = 0;
-        foreach ($guest_details as $count) {
-            $total_guests += intval($count);
+        foreach ($guest_details as $detail) {
+            $total_guests += intval($detail['count']);
         }
-        
-        error_log('Guest Details'.print_r($guest_details, true));
-
-        // Process guest details to ensure it's a simple array of integers
-        $processed_guest_details = array_map(function ($detail) {
-            return isset($detail['count']) ? intval($detail['count']) : 0;
-        }, $guest_details);
-
-        error_log('Processed Guest Details'.print_r($processed_guest_details, true));
 
         if ($total_guests < 1) {
             wp_send_json_error(array('message' => 'Total guest count must be at least 1.'));
             return;
         }
 
-        // Serialize guest details for storage
-        $guest_details_serialized = maybe_serialize($processed_guest_details);
+        // Serialize guest details and goods/services for storage
+        $guest_details_serialized = maybe_serialize($guest_details);
+        $goods_services_serialized = maybe_serialize($goods_services);
 
         // Update the registration in the database
         $result = $wpdb->update(
             "{$wpdb->prefix}sct_event_registrations",
             array(
                 'guest_details' => $guest_details_serialized,
+                'goods_services' => $goods_services_serialized,
                 'guest_count' => $total_guests
             ),
             array('id' => $registration_id),
-            array('%s', '%d'),
+            array('%s', '%s', '%d'),
             array('%d')
         );
 
@@ -1207,6 +1450,46 @@ class EventAdmin {
         }
     }
 
+    public function update_payment_status() {
+        // Verify nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'update_payment_status')) {
+            wp_send_json_error(array('message' => 'Security check failed.'));
+            return;
+        }
+
+        // Check user permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Unauthorized.'));
+            return;
+        }
+
+        global $wpdb;
+
+        // Get and validate input
+        $registration_id = isset($_POST['registration_id']) ? intval($_POST['registration_id']) : 0;
+        $payment_status = isset($_POST['payment_status']) ? sanitize_text_field($_POST['payment_status']) : '';
+
+        if (!$registration_id || !in_array($payment_status, array('pending', 'paid', 'failed'), true)) {
+            wp_send_json_error(array('message' => 'Invalid input.'));
+            return;
+        }
+
+        // Update the payment status in the database
+        $result = $wpdb->update(
+            "{$wpdb->prefix}sct_event_registrations",
+            array('payment_status' => $payment_status),
+            array('id' => $registration_id),
+            array('%s'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Payment status updated successfully.'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update payment status.'));
+        }
+    }
+
     public function add_screen_options() {
         $screen = get_current_screen();
         if ($screen->id === 'toplevel_page_event-admin') {
@@ -1238,9 +1521,8 @@ class EventAdmin {
     }
 
     public function add_registration() {
-        // Verify nonce
         if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'update_registration_nonce')) {
-            wp_send_json_error(array('message' => 'Security check failed'));
+            wp_send_json_error(array('message' => 'Security check failed.'));
             return;
         }
 
@@ -1255,50 +1537,54 @@ class EventAdmin {
         $name = sanitize_text_field($_POST['name']);
         $email = sanitize_email($_POST['email']);
         $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
+        $goods_services = isset($_POST['goods_services']) ? $_POST['goods_services'] : null;
         $guest_count = isset($_POST['guest_count']) ? intval($_POST['guest_count']) : 0;
 
-        error_log('Guest Details: ' . print_r($_POST['guest_details'], true));
-
-        // Handle events with and without pricing options
+        // Process guest details
+        $processed_guest_details = array();
         if (!empty($guest_details)) {
-            // Extract only the 'count' values from guest_details
-            $processed_guest_details = array_map(function ($detail) {
-                return isset($detail['count']) ? intval($detail['count']) : 0;
-            }, $guest_details);
-
-            // Calculate total guests from processed_guest_details
-            $total_guests = array_sum($processed_guest_details);
-
-            if ($total_guests < 1) {
-                wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
-                return;
+            foreach ($guest_details as $index => $detail) {
+                $processed_guest_details[$index] = array(
+                    'count' => intval($detail['count']),
+                    'name' => sanitize_text_field($detail['name']),
+                    'price' => floatval($detail['price']),
+                );
+                $guest_count += $processed_guest_details[$index]['count']; // Update total guest count
             }
-
-            // Serialize the processed guest details for storage
-            $guest_details_serialized = maybe_serialize($processed_guest_details);
-        } else {
-            // For events without pricing options, use guest_count directly
-            if ($guest_count < 1) {
-                wp_send_json_error(array('message' => 'Guest count must be at least 1.'));
-                return;
-            }
-
-            $total_guests = $guest_count;
-            $guest_details_serialized = null; // No guest details for events without pricing options
         }
+
+        // Process goods/services
+        $processed_goods_services = array();
+        if (!empty($goods_services)) {
+            foreach ($goods_services as $index => $service) {
+                $processed_goods_services[$index] = array(
+                    'count' => intval($service['count']),
+                    'name' => sanitize_text_field($service['name']),
+                    'price' => floatval($service['price']),
+                );
+            }
+        }
+
+        // Serialize guest details and goods/services for storage
+        $guest_details_serialized = maybe_serialize($processed_guest_details);
+        $goods_services_serialized = maybe_serialize($processed_goods_services);
+
+        // Prepare registration data
+        $registration_data = array(
+            'event_id' => $event_id,
+            'name' => $name,
+            'email' => $email,
+            'guest_details' => $guest_details_serialized,
+            'goods_services' => $goods_services_serialized,
+            'guest_count' => $guest_count,
+            'registration_date' => current_time('mysql'),
+        );
 
         // Insert registration into the database
         $result = $wpdb->insert(
             "{$wpdb->prefix}sct_event_registrations",
-            array(
-                'event_id' => $event_id,
-                'name' => $name,
-                'email' => $email,
-                'guest_details' => $guest_details_serialized,
-                'guest_count' => $total_guests,
-                'registration_date' => current_time('mysql')
-            ),
-            array('%d', '%s', '%s', '%s', '%d', '%s')
+            $registration_data,
+            array('%d', '%s', '%s', '%s', '%s', '%d', '%s')
         );
 
         if ($result) {
@@ -1386,6 +1672,168 @@ class EventAdmin {
         wp_send_json_success(['url' => $file_url]);
     }
 
+    public function view_registration_details() {
+        // Verify nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'view_registration_details')) {
+            wp_send_json_error(array('message' => 'Security check failed.'));
+            return;
+        }
+
+        // Check user permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Unauthorized.'));
+            return;
+        }
+
+        global $wpdb;
+
+        // Get and validate input
+        $registration_id = isset($_POST['registration_id']) ? intval($_POST['registration_id']) : 0;
+
+        if (!$registration_id) {
+            wp_send_json_error(array('message' => 'Invalid registration ID.'));
+            return;
+        }
+
+        // Fetch registration details
+        $registration = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_event_registrations WHERE id = %d",
+            $registration_id
+        ));
+
+        if (!$registration) {
+            wp_send_json_error(array('message' => 'Registration not found.'));
+            return;
+        }
+
+        // Fetch event details
+        $event = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $registration->event_id
+        ));
+
+        // Fetch pricing options and goods/services
+        $guest_details = maybe_unserialize($registration->guest_details);
+        $goods_services = maybe_unserialize($registration->goods_services);
+        $pricing_options = $event ? maybe_unserialize($event->pricing_options) : [];
+        $goods_services_options = $event ? maybe_unserialize($event->goods_services) : [];
+
+        // Calculate total price
+        $total_price = 0;
+        $currency_symbol = isset($event->currency_symbol) ? $event->currency_symbol : '';
+        $currency_format = isset($event->currency_format) ? intval($event->currency_format) : 2;
+
+        ob_start();
+        ?>
+        <p><strong>Name:</strong> <?php echo esc_html($registration->name); ?></p>
+        <p><strong>Email:</strong> <?php echo esc_html($registration->email); ?></p>
+        <p><strong>Guest Count:</strong> <?php echo esc_html($registration->guest_count); ?></p>
+        <?php
+        $has_pricing = !empty($pricing_options);
+        $has_goods = !empty($goods_services_options);
+
+        // Calculate total price for pricing options
+        if ($has_pricing) {
+            foreach ($pricing_options as $index => $option) {
+                $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
+                $price = isset($option['price']) ? floatval($option['price']) : 0;
+                $total_price += $count * $price;
+            }
+        }
+        // Calculate total price for goods/services
+        if ($has_goods) {
+            foreach ($goods_services_options as $index => $service) {
+                $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+                $price = isset($service['price']) ? floatval($service['price']) : 0;
+                $total_price += $count * $price;
+            }
+        }
+
+        // Only show payment status and option if total price > 0
+        if ($total_price > 0): ?>
+        <?php endif; ?>
+
+        <?php if ($has_pricing): ?>
+            <h4>Pricing Options</h4>
+            <table class="uk-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Count</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($pricing_options as $index => $option) :
+                    $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
+                    $price = isset($option['price']) ? floatval($option['price']) : 0;
+                    $subtotal = $count * $price;
+                ?>
+                    <tr>
+                        <td><?php echo esc_html($option['name']); ?></td>
+                        <td><?php echo $count; ?></td>
+                        <td><?php echo esc_html($currency_symbol) . ' ' . number_format($price, $currency_format); ?></td>
+                        <td><?php echo esc_html($currency_symbol) . ' ' . number_format($subtotal, $currency_format); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if ($has_goods): ?>
+            <h4>Goods/Services</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Count</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($goods_services_options as $index => $service) :
+                    $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+                    $price = isset($service['price']) ? floatval($service['price']) : 0;
+                    $subtotal = $count * $price;
+                ?>
+                    <tr>
+                        <td><?php echo esc_html($service['name']); ?></td>
+                        <td><?php echo $count; ?></td>
+                        <td><?php echo esc_html($currency_symbol) . ' ' . number_format($price, $currency_format); ?></td>
+                        <td><?php echo esc_html($currency_symbol) . ' ' . number_format($subtotal, $currency_format); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if (($has_pricing || $has_goods) && $total_price > 0): ?>
+            <p><strong>Total Price:</strong> <?php echo esc_html($currency_symbol) . ' ' . number_format($total_price, $currency_format); ?></p>
+            <p><strong>Payment Status:</strong> <?php echo esc_html($registration->payment_status); ?></p>
+            <?php
+            // Payment method
+            $selected_payment = '';
+            if (!empty($event->payment_methods) && !empty($registration->payment_method)) {
+                $payment_methods = maybe_unserialize($event->payment_methods);
+                foreach ($payment_methods as $method) {
+                    if ($method['type'] === $registration->payment_method) {
+                        $selected_payment = esc_html($method['description']);
+                        break;
+                    }
+                }
+            }
+            ?>
+            <p><strong>Payment Option:</strong> <?php echo $selected_payment ? $selected_payment : esc_html($registration->payment_method); ?></p>
+
+        <?php endif; ?>
+        <?php
+        $html = ob_get_clean();
+
+        // Return the HTML content
+        wp_send_json_success(array('html' => $html));
+    }
 } // End Class
 
 add_action('wp_ajax_update_children_guest_count', array('EventAdmin', 'update_children_guest_count'));

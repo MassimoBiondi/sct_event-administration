@@ -46,10 +46,10 @@ jQuery(document).ready(function($) {
     });
 
     // Close the modal when the close button or cancel button is clicked
-    $(document).on('click', '.close-modal', function () {
-        $(this).closest('.modal').hide();
-        clearModalFields(); // Clear the modal fields when closed
-    });
+    // $(document).on('click', '.close-modal', function () {
+    //     $(this).closest('.modal').hide();
+    //     clearModalFields(); // Clear the modal fields when closed
+    // });
 
     $(document).on('change', '#previous-events-dropdown', function () {
         console.log('Selected value:', $(this).val()); // Debugging to check the selected value
@@ -115,42 +115,6 @@ jQuery(document).ready(function($) {
         $('#new-event-date').val('');
     }
 
-    // --- Commented out block with alerts remains commented ---
-    // $('#copy-selected-event').on('click', function () {
-    //     const selectedEventName = $('#previous-events-dropdown').val();
-    //     const newEventDate = prompt('Enter the new date for the copied event (YYYY-MM-DD):');
-    //
-    //     if (!selectedEventName || !newEventDate) {
-    //         alert('Please select an event and provide a new date.');
-    //         return;
-    //     }
-    //
-    //     // Send AJAX request to copy the event
-    //     $.ajax({
-    //         url: ajaxurl,
-    //         type: 'POST',
-    //         data: {
-    //             action: 'copy_event_by_name',
-    //             event_name: selectedEventName,
-    //             new_event_date: newEventDate,
-    //             security: eventAdmin.copy_event_nonce
-    //         },
-    //         success: function (response) {
-    //             if (response.success) {
-    //                 alert('Event copied successfully.');
-    //                 location.reload();
-    //             } else {
-    //                 alert(response.data.message || 'Failed to copy event.');
-    //             }
-    //         },
-    //         error: function () {
-    //             alert('An error occurred while copying the event.');
-    //         }
-    //     });
-    // });
-    // --- End commented block ---
-
-
     let mediaUploader;
 
     $('#upload-thumbnail-button').on('click', function (e) {
@@ -206,6 +170,7 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
 
     // Handle event deletion
     $('.delete-event').on('click', function(e) {
@@ -337,7 +302,7 @@ jQuery(document).ready(function($) {
 
 
     // Add click handlers for the placeholder codes
-    $('.placeholder-info code').each(function() {
+    $('.qqqplaceholder-info code').each(function() {
         $(this)
             .css('cursor', 'pointer')
             .attr('title', 'Click to insert')
@@ -373,12 +338,41 @@ jQuery(document).ready(function($) {
             });
     });
 
+    // Add click handlers for the placeholder codes
+    $('.placeholder-info code').each(function() {
+        $(this)
+            .css('cursor', 'pointer')
+            .attr('title', 'Click to insert')
+            .on('click', function() {
+                var placeholder = $(this).text() + ' ';
+                var editorId = 'confirmation_template';
 
-    $('.guest-count').on('input', function() {
+                // Check if TinyMCE is active
+                if (typeof tinymce !== 'undefined' && tinymce.get(editorId) && !tinymce.get(editorId).isHidden()) {
+                    // Insert into the Visual editor
+                    tinymce.get(editorId).execCommand('mceInsertContent', false, placeholder);
+                } else {
+                    // Insert into the Text editor
+                    var $textarea = $('#' + editorId);
+                    var startPos = $textarea[0].selectionStart;
+                    var endPos = $textarea[0].selectionEnd;
+                    var currentContent = $textarea.val();
+                    var newContent = currentContent.substring(0, startPos) +
+                        placeholder +
+                        currentContent.substring(endPos);
+                    $textarea.val(newContent);
+                    $textarea.focus();
+                    $textarea[0].setSelectionRange(startPos + placeholder.length, startPos + placeholder.length);
+                }
+            });
+    });
+
+
+    $('.simple-guest-count').on('input', function() {
         var input = $(this);
         var originalValue = input.data('original');
         var row = input.closest('tr'); // Find the closest <tr> for the input
-        var updateButton = row.find('.update-guest-counts'); // Find the button within the same <tr>
+        var updateButton = row.find('.update-simple-guest-count'); // Find the button within the same <tr>
 
         console.log('Update button found:', updateButton.length > 0);
         console.log('Original value:', originalValue, 'Current value:', input.val());
@@ -391,11 +385,11 @@ jQuery(document).ready(function($) {
         }
     });
 
-    $('.pricing-option-guest-count').on('input', function() {
-        var input = $(this);
-        var originalValue = input.data('original');
-        var row = input.closest('tr'); // Find the closest <tr> for the input
-        var updateButton = row.find('.update-guest-counts'); // Find the button within the same <tr>
+    $('.pricing-option-guest-count, .goods-service-count').on('input', function () {
+        const input = $(this);
+        const row = input.closest('tr'); // Find the closest <tr> for the input
+        const originalValue = input.data('original');
+        const updateButton = row.find('.update-guest-counts'); // Find the button within the same <tr>
 
         console.log('Update button found:', updateButton.length > 0);
         console.log('Original value:', originalValue, 'Current value:', input.val());
@@ -406,6 +400,9 @@ jQuery(document).ready(function($) {
         } else {
             updateButton.hide();
         }
+
+        // Update the Total Price for the row
+        updateRowTotalPrice(row);
     });
 
     // Calculate total price dynamically
@@ -518,25 +515,52 @@ jQuery(document).ready(function($) {
          var button = $(this);
          var row = button.closest('tr');
          var registrationId = row.data('registration-id');
-         var recipientEmail = button.data('email');
+         var recipientEmail = button.data('recipient-email');
          var name = row.find('td:first').text().trim(); // Trim whitespace
 
-         $('#recipient_email').val(recipientEmail);
-         $('#registration_id').val(registrationId);
-         $('#is_mass_email').val('0');
-         $('#event_id').val(''); // Clear event_id for single email
+         $('#send-email-form #recipient_email').val(recipientEmail);
+         $('#send-email-form #registration_id').val(registrationId);
+         $('#send-email-form #is_mass_email').val('0');
+         $('#send-email-form #event_id').val(''); // Clear event_id for single email
 
          // Fill recipient Name in Modal
-         $('#admin_mail_recipient').text(name || recipientEmail); // Use email if name is empty
+         $('#email-modal #admin_mail_recipient').text(name || recipientEmail); // Use email if name is empty
 
          // Pre-fill subject with event name
          var eventName = button.closest('.event-registrations').find('h2').text().split(' - ')[0];
-         $('#email_subject').val('Regarding: ' + eventName);
+         $('#send-email-form #email_subject').val('Regarding: ' + eventName);
+         $('#send-email-form #email_body').val('');
+
 
          modal.show();
      });
 
 
+     UIkit.util.on('div[uk-modal]', 'beforeshow', function (e) {
+        const modalId = $(this).attr('id'); // Get the modal ID
+        if (modalId === 'email-modal') {
+            console.log('Preparing Email Modal...');
+            $('#send-email-form  #email_body').html(''); // Clear message field
+
+            // const form = $(`#${modalId} form`);
+            // if (form.length) {
+            //     $('#email-message').val(''); // Clear message field
+            //     // form[0].reset();
+            // }
+        }
+        // Perform any custom logic before the modal is shown
+        // if (modalId === 'add-registration-modal') {
+        //     console.log('Preparing Add Registration Modal...');
+        //     // Example: Reset form fields
+        //     const form = $(`#${modalId} form`);
+        //     if (form.length) {
+        //         form[0].reset();
+        //     }
+        // } else if (modalId === 'select-winners-modal') {
+        //     console.log('Preparing Select Winners Modal...');
+        //     // Example: Set default values or fetch data
+        // }
+    });
 
     // Open modal for mass email
     $('.mail-to-all').on('click', function(e) {
@@ -545,31 +569,31 @@ jQuery(document).ready(function($) {
         var eventId = button.data('event-id');
         var eventName = button.data('event-name');
 
-        $('#event_id').val(eventId);
-        $('#is_mass_email').val('1');
-        $('#recipient_email').val(''); // Clear single recipient fields
-        $('#registration_id').val('');
+        $('#send-email-form #event_id').val(eventId);
+        $('#send-email-form #is_mass_email').val('1');
+        $('#send-email-form #recipient_email').val(''); // Clear single recipient fields
+        $('#send-email-form #registration_id').val('');
 
-        $('#admin_mail_recipient').text('All Registrants'); // More descriptive
+        $('#email-modal #admin_mail_recipient').text('All Registrants'); // More descriptive
 
-        $('#email_subject').val('Regarding: ' + eventName);
-
-        modal.show();
+        $('#send-email-form #email_subject').val('Regarding: ' + eventName);
+        $('#send-email-form #email_body').val('');
+        // modal.show();
     });
 
      // Close modal when X or Cancel is clicked
-     $('.close-modal, .cancel-email').on('click', function(e) {
-         e.preventDefault();
-         closeModal();
-     });
+    //  $('.close-modal, .cancel-email').on('click', function(e) {
+    //      e.preventDefault();
+    //      closeModal();
+    //  });
 
      // Close modal when clicking outside
-     modal.on('click', function(e) {
-         // Check if the click was on the modal background (not the content)
-         if ($(e.target).is(modal)) {
-             closeModal(); // Close if background is clicked
-         }
-     });
+    //  modal.on('click', function(e) {
+    //      // Check if the click was on the modal background (not the content)
+    //      if ($(e.target).is(modal)) {
+    //          closeModal(); // Close if background is clicked
+    //      }
+    //  });
 
      // Prevent modal from closing when clicking inside the modal content
      $('.email-modal-content').on('click', function(e) {
@@ -583,11 +607,11 @@ jQuery(document).ready(function($) {
         if (form.length) {
             form[0].reset();
             // Clear all hidden fields too
-            $('#recipient_email').val('');
-            $('#registration_id').val('');
-            $('#event_id').val('');
-            $('#is_mass_email').val('');
-            $('#admin_mail_recipient').text(''); // Clear recipient display
+            $('#send-email-form #recipient_email').val('');
+            $('#send-email-form #registration_id').val('');
+            $('#send-email-form #event_id').val('');
+            $('#send-email-form #is_mass_email').val('');
+            $('#send-email-form #admin_mail_recipient').text(''); // Clear recipient display
         }
      }
 
@@ -709,7 +733,6 @@ jQuery(document).ready(function($) {
 
             recipientsList += `
                 <li class="${statusClass}">
-                    ${statusIcon}
                     <span class="recipient-email">${email}</span>
                     <span class="status-label">${status === 'failed' ? 'Failed' : 'Sent'}</span>
                     ${status === 'failed' ? `
@@ -830,120 +853,53 @@ jQuery(document).ready(function($) {
     });
 
     function calculateTotals(table) {
-        if (!table || table.length === 0) return; // Exit if table doesn't exist
+        let totalGuests = 0;
+        let totalPrice = 0;
 
-        var totalPrice = 0;
-        var totalGuests = 0; // Combined total
-        var totalMembers = 0;
-        var totalNonMembers = 0;
-        var totalChildren = 0;
-        var totalFromPricingOptions = 0; // For pricing options specifically
+        // Reset totals for pricing options and goods/services
+        table.find('.total-pricing-option').text(0);
+        table.find('.total-goods-service').text(0);
 
-        var currencySymbol = eventAdmin.currency_symbol || '$'; // Use localized symbol
-        var currencyPosition = eventAdmin.currency_position || 'before'; // 'before' or 'after'
-        var decimalSeparator = eventAdmin.decimal_separator || '.';
-        var thousandSeparator = eventAdmin.thousand_separator || ',';
-        var numDecimals = parseInt(eventAdmin.number_of_decimals, 10) || 2;
+        // Calculate totals for each row
+        table.find('tbody tr').each(function () {
+            const row = $(this);
+            let rowGuestCount = 0;
 
-        // Function to format currency
-        function formatCurrency(amount) {
-            let formattedAmount = parseFloat(amount).toFixed(numDecimals);
-            let parts = formattedAmount.split('.');
-            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
-            formattedAmount = parts.join(decimalSeparator);
+            // Add guest counts from pricing options
+            row.find('.pricing-option-guest-count').each(function () {
+                const count = parseInt($(this).val(), 10) || 0;
+                rowGuestCount += count;
 
-            if (currencyPosition === 'before') {
-                return currencySymbol + formattedAmount;
-            } else {
-                return formattedAmount + currencySymbol;
-            }
-        }
+                // Update column totals for pricing options
+                const index = $(this).data('pricing-index');
+                const columnTotalCell = table.find(`.total-pricing-option[data-pricing-index="${index}"]`);
+                const currentTotal = parseInt(columnTotalCell.text(), 10) || 0;
+                columnTotalCell.text(currentTotal + count);
+            });
 
-        // Calculate totals based on visible rows in DataTable (if applicable) or all rows
-        var rowsToCalculate;
-        if ($.fn.DataTable.isDataTable(table)) {
-            rowsToCalculate = table.DataTable().rows({ search: 'applied' }).nodes();
-        } else {
-            rowsToCalculate = table.find('tbody tr');
-        }
+            // Add guest counts from goods/services
+            row.find('.goods-service-count').each(function () {
+                const count = parseInt($(this).val(), 10) || 0;
+                rowGuestCount += count;
 
-        $(rowsToCalculate).each(function() {
-            var row = $(this);
-            var rowTotalPrice = 0;
+                // Update column totals for goods/services
+                const index = $(this).data('service-index');
+                const columnTotalCell = table.find(`.total-goods-service[data-service-index="${index}"]`);
+                const currentTotal = parseInt(columnTotalCell.text(), 10) || 0;
+                columnTotalCell.text(currentTotal + count);
+            });
 
-            // Check if using pricing options
-            var pricingInputs = row.find('.pricing-option-guest-count');
-            if (pricingInputs.length > 0) {
-                let rowGuestCount = 0;
-                pricingInputs.each(function() {
-                    const count = parseInt($(this).val(), 10) || 0;
-                    const price = parseFloat($(this).data('price')) || 0; // Get price from data attribute
-                    rowTotalPrice += count * price;
-                    rowGuestCount += count;
-                });
-                totalFromPricingOptions += rowGuestCount; // Add to pricing option specific total
-                totalGuests += rowGuestCount; // Add to overall total guests
-                row.find('.total-guests').text(rowGuestCount); // Update row's total guests display
-            } else {
-                // Using member/non-member/children counts
-                var memberGuests = parseInt(row.find('.member-guest-count').val(), 10) || 0;
-                var nonMemberGuests = parseInt(row.find('.non-member-guest-count').val(), 10) || 0;
-                var childrenGuests = parseInt(row.find('.children-guest-count').val(), 10) || 0;
-
-                var memberPrice = parseFloat(row.data('member-price')) || 0;
-                var nonMemberPrice = parseFloat(row.data('non-member-price')) || 0;
-                // Assuming children price is handled elsewhere or is 0 if not specified
-
-                rowTotalPrice = (memberPrice * memberGuests) + (nonMemberPrice * nonMemberGuests);
-                totalMembers += memberGuests;
-                totalNonMembers += nonMemberGuests;
-                totalChildren += childrenGuests;
-                totalGuests += memberGuests + nonMemberGuests + childrenGuests; // Add all types to total guests
+            // If no pricing options or goods/services, use the guest_count field
+            if (rowGuestCount === 0) {
+                rowGuestCount = parseInt(row.find('.total-guests').text(), 10) || 0;
             }
 
-            // Update row's total price display
-            row.find('.total-price-cell .total-price').text(formatCurrency(rowTotalPrice));
-            totalPrice += rowTotalPrice; // Add row total to grand total price
+            // Update row totals
+            totalGuests += rowGuestCount;
         });
 
-
         // Update footer totals
-        var footer = table.find('tfoot');
-        footer.find('.table-total-price .total-price-value').text(formatCurrency(totalPrice));
-
-        // Update specific counts if those columns exist in the footer
-        if (footer.find('.total-members').length) footer.find('.total-members').text(totalMembers);
-        if (footer.find('.total-non-members').length) footer.find('.total-non-members').text(totalNonMembers);
-        if (footer.find('.total-children').length) footer.find('.total-children').text(totalChildren);
-        if (footer.find('.total-pricing-options').length) footer.find('.total-pricing-options').text(totalFromPricingOptions); // Update pricing option total if exists
-
-        // Update overall total guests count in the footer
-        footer.find('.total-guests').text(totalGuests);
-
-
-        // Update Remaining Capacity
-        var eventCapacity = parseInt(table.data('event-capacity'), 10);
-        var remainingCapacityCell = footer.find('.remaining-capacity');
-        remainingCapacityCell.removeClass('status-indicator status-failed status-warning'); // Clear previous status classes
-
-        if (!isNaN(eventCapacity) && eventCapacity > 0) {
-            var remaining = eventCapacity - totalGuests;
-            if (remaining < 0) {
-                remainingCapacityCell.text('Over Capacity (' + remaining + ')').addClass('status-indicator status-failed');
-            } else if (remaining === 0) {
-                remainingCapacityCell.text('Sold Out').addClass('status-indicator status-failed');
-            } else {
-                 // Optional: Add warning if capacity is low
-                 if (remaining <= (eventCapacity * 0.1)) { // Example: warning if <= 10% remaining
-                     remainingCapacityCell.addClass('status-indicator status-warning');
-                 }
-                remainingCapacityCell.text(remaining + ' Remaining');
-            }
-        } else if (eventCapacity === 0) {
-             remainingCapacityCell.text('Unlimited'); // Or 'N/A' or empty
-        } else {
-            remainingCapacityCell.text(''); // Clear if capacity is not set or invalid
-        }
+        table.find('.event-total-guests').text(totalGuests);
     }
 
     // Initial calculation for all tables on page load
@@ -952,7 +908,7 @@ jQuery(document).ready(function($) {
     });
 
     // Recalculate totals when a guest count changes value and loses focus (or on input)
-    $(document).on('change input', '.member-guest-count, .non-member-guest-count, .children-guest-count, .pricing-option-guest-count', function() {
+    $(document).on('change input', '.member-guest-count, .non-member-guest-count, .children-guest-count, .pricing-option-guest-count, .simple-guest-count', function() {
         var table = $(this).closest('.wp-list-table');
         calculateTotals(table);
     });
@@ -1066,6 +1022,17 @@ jQuery(document).ready(function($) {
             $button.hide();
         }
     });
+    
+    // Handle simple guest count update visibility
+    // $('.simple-guest-count').on('input change', function() {
+    //     var $input = $(this);
+    //     var $button = $input.siblings('.update-simple-guest-count');
+    //     if ($input.val() != $input.data('original')) {
+    //         $button.show();
+    //     } else {
+    //         $button.hide();
+    //     }
+    // });
 
 
     $('#accordion').accordion({
@@ -1074,17 +1041,17 @@ jQuery(document).ready(function($) {
         heightStyle: "content"
     });
 
-    $('#add-pricing-option').on('click', function () {
-        const index = $('#pricing-options-container .pricing-option').length;
-        // Use number input for price, ensure step and min are set
-        $('#pricing-options-container').append(`
-            <div class="pricing-option">
-                <label>Name: <input type="text" name="pricing_options[${index}][name]" placeholder="Category Name" required></label>
-                <label>Price: <input type="number" name="pricing_options[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required></label>
-                <button type="button" class="remove-pricing-option button button-small"><span class="dashicons dashicons-trash"></span> Remove</button>
-            </div>
-        `);
-    });
+    // $('#add-pricing-option').on('click', function () {
+    //     const index = $('#pricing-options-container .pricing-option').length;
+    //     // Use number input for price, ensure step and min are set
+    //     $('#pricing-options-container').append(`
+    //         <div class="pricing-option">
+    //             <input type="text" name="pricing_options[${index}][name]" placeholder="Category Name" required>
+    //             <input type="number" name="pricing_options[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
+    //             <button type="button" class="remove-pricing-option button button-small"><span class="dashicons dashicons-trash"></span> Remove</button>
+    //         </div>
+    //     `);
+    // });
 
 
 
@@ -1185,10 +1152,74 @@ jQuery(document).ready(function($) {
                 }
 
     // Handle guest count update button clicks (Member/Non-Member/Children)
-    $('.update-member-guest-count, .update-non-member-guest-count, .update-children-guest-count').on('click', function() {
+    // $('.update-member-guest-count, .update-non-member-guest-count, .update-children-guest-count').on('click', function() {
+    //     var button = $(this);
+    //     var guestTypeClass = button.attr('class').match(/(member|non-member|children)-guest-count/)[0]; // Get the input class name
+    //     handleGuestCountUpdate(button, guestTypeClass);
+    // });
+    
+    // Handle simple guest count update button clicks
+    $(document).on('click', '.update-simple-guest-count', function() {
         var button = $(this);
-        var guestTypeClass = button.attr('class').match(/(member|non-member|children)-guest-count/)[0]; // Get the input class name
-        handleGuestCountUpdate(button, guestTypeClass);
+        var row = button.closest('tr');
+        var input = row.find('.simple-guest-count');
+        // var input = button.siblings('.simple-guest-count');
+        // var row = button.closest('tr');
+        var registrationId = button.data('registration-id');
+        var newGuestCount = parseInt(input.val(), 10);
+        
+        // Validate count
+        if (isNaN(newGuestCount) || newGuestCount < 1) {
+            showAdminNotice('Please enter a valid number (1 or more).', 'warning');
+            input.val(input.data('original')); // Revert to original
+            button.hide();
+            return;
+        }
+        
+        // Send AJAX request
+        $.ajax({
+            url: eventAdmin.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'update_registration_guest_count',
+                registration_id: registrationId,
+                guest_count: newGuestCount,
+                security: eventAdmin.update_registration_nonce
+            },
+            beforeSend: function() {
+                button.prop('disabled', true);
+            },
+            success: function(response) {
+                if (response.success) {
+                    input.data('original', newGuestCount); // Update original value
+                    button.hide(); // Hide button on success
+                    
+                    // Show temporary success checkmark
+                    var successIcon = $('<span class="dashicons dashicons-yes" style="color: green; margin-left: 5px;"></span>');
+                    button.after(successIcon);
+                    setTimeout(function() {
+                        successIcon.fadeOut(function() { $(this).remove(); });
+                    }, 2000);
+                    
+                    // Recalculate totals for the table
+                    calculateTotals(button.closest('.wp-list-table'));
+                } else {
+                    showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
+                    input.val(input.data('original')); // Revert on error
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                showAdminNotice('Error updating guest count: ' + error, 'error');
+                input.val(input.data('original')); // Revert on error
+            },
+            complete: function() {
+                button.prop('disabled', false);
+                if (input.val() == input.data('original')) {
+                    button.hide();
+                }
+            }
+        });
     });
 
     // Open Add Registration Modal
@@ -1196,54 +1227,55 @@ jQuery(document).ready(function($) {
         const button = $(this);
         const eventId = button.data('event-id');
         const pricingOptions = button.data('pricing-options'); // Expecting an array of objects
+        const goodsServices = button.data('goods-services'); // Expecting an array of objects
         const modal = $('#add-registration-modal');
         const form = modal.find('#add-registration-form');
 
         // Clear previous form state
         form[0].reset();
         form.find('#add_registration_pricing_options_container').empty(); // Clear dynamic options
+        form.find('#add_registration_goods_services_container').empty(); // Clear dynamic goods/services options
         form.find('#add_registration_guest_count_field').hide(); // Hide basic count field initially
 
         // Set the event ID in the hidden input field
         form.find('input[name="event_id"]').val(eventId);
 
         const pricingContainer = form.find('#add_registration_pricing_options_container');
+        const goodsServicesContainer = form.find('#add_registration_goods_services_container');
         const basicGuestCountField = form.find('#add_registration_guest_count_field');
 
-        // Build pricing options if available
-        if (pricingOptions && Array.isArray(pricingOptions) && pricingOptions.length > 0) {
-            pricingContainer.show();
-            basicGuestCountField.hide(); // Hide basic count if pricing options exist
+        // Populate pricing options
+        if (pricingOptions && pricingOptions.length > 0) {
             pricingOptions.forEach((option, index) => {
-                // Format price for display
-                let priceDisplay = 'Free';
-                const price = parseFloat(option.price);
-                 if (!isNaN(price) && price > 0) {
-                    // Use localized currency formatting if available
-                    priceDisplay = (eventAdmin.currency_symbol || '$') + price.toFixed(eventAdmin.number_of_decimals || 2);
-                 }
-
                 pricingContainer.append(`
-                    <div class="pricing-option form-field">
-                        <label for="add_guest_count_${index}">
-                            ${option.name} (${priceDisplay}):
-                        </label>
-                        <input type="number"
-                               id="add_guest_count_${index}"
-                               name="guest_details[${index}][count]"
-                               class="small-text guest-count"
-                               min="0"
-                               value="0"
-                               data-price="${option.price || 0}"> <!-- Store price for potential calculations -->
+                    <div class="pricing-option">
+                        <label>${option.name} (${option.price}):</label>
+                        <input type="number" name="guest_details[${index}][count]" min="0" value="0">
                         <input type="hidden" name="guest_details[${index}][name]" value="${option.name}">
-                        <input type="hidden" name="guest_details[${index}][price]" value="${option.price || 0}">
+                        <input type="hidden" name="guest_details[${index}][price]" value="${option.price}">
                     </div>
                 `);
             });
+            pricingContainer.show();
+            basicGuestCountField.hide();
         } else {
             // Show basic guest count field if no pricing options
             pricingContainer.hide();
             basicGuestCountField.show();
+        }
+
+        // Populate goods/services options
+        if (goodsServices && goodsServices.length > 0) {
+            goodsServices.forEach((service, index) => {
+                goodsServicesContainer.append(`
+                    <div class="goods-service-option">
+                        <label>${service.name} (${service.price}):</label>
+                        <input type="number" name="goods_services[${index}][count]" min="0" value="0">
+                        <input type="hidden" name="goods_services[${index}][name]" value="${service.name}">
+                        <input type="hidden" name="goods_services[${index}][price]" value="${service.price}">
+                    </div>
+                `);
+            });
         }
 
         // Show the modal
@@ -1267,18 +1299,14 @@ jQuery(document).ready(function($) {
             data: form.serialize() + '&security=' + eventAdmin.update_registration_nonce, // Use appropriate nonce
             success: function (response) {
                 if (response.success) {
-                    // --- REPLACED alert ---
                     showAdminNotice('Registration added successfully.', 'success');
                     $('#add-registration-modal').hide(); // Hide modal on success
                     location.reload(); // Reload the page to reflect the changes
                 } else {
-                    // --- REPLACED alert ---
-                    // Show error within the modal if possible, or as a general admin notice
                     showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
                 }
             },
             error: function (xhr, status, error) {
-                 // --- REPLACED alert ---
                 showAdminNotice('Error adding registration: ' + error, 'error');
             },
             complete: function () {
@@ -1286,7 +1314,6 @@ jQuery(document).ready(function($) {
             }
         });
     });
-
 
 
     // Close Add Registration modal via Cancel button
@@ -1417,68 +1444,51 @@ jQuery(document).ready(function($) {
     });
 
     // Handle updating guest counts (for pricing options or single count)
-    $('.update-guest-counts').on('click', function () {
+    $(document).on('click', '.update-guest-counts', function () {
         const button = $(this);
         const row = button.closest('tr');
         const registrationId = row.data('registration-id'); // Get registration ID from row data attribute
         const nonce = eventAdmin.update_registration_nonce; // Get nonce
 
         let data = {
+            action: 'update_registration_guest_counts',
             registration_id: registrationId,
-            security: nonce
+            security: nonce,
+            guest_details: [],
+            goods_services: []
         };
 
+        // Collect guest details (pricing options)
         const pricingOptionInputs = row.find('.pricing-option-guest-count');
-        const guestCountInput = row.find('.guest-count'); // For non-pricing option case
+        pricingOptionInputs.each(function () {
+            const input = $(this);
+            const index = input.data('pricing-index');
+            const count = parseInt(input.val(), 10) || 0;
+            const name = input.closest('td').data('name'); // Retrieve name from data attribute
+            const price = parseFloat(input.closest('td').data('price')) || 0;
 
-        if (pricingOptionInputs.length > 0) {
-            // Using Pricing Options
-            data.action = 'update_registration_guest_counts'; // Specific action for pricing options
-            
-            let guestDetails = {};
-            let totalGuests = 0;
-            let isValid = true;
-
-            pricingOptionInputs.each(function () {
-                const input = $(this);
-                const index = input.data('pricing-index'); // Assuming index is stored in data-pricing-index
-                const count = parseInt(input.val(), 10);
-                const name = input.closest('.pricing-option-details').find('input[name$="[name]"]').val(); // Get name
-                const price = input.closest('.pricing-option-details').find('input[name$="[price]"]').val(); // Get price
-
-                if (isNaN(count) || count < 0) {
-                    showAdminNotice(`Invalid count entered for ${name || 'an option'}. Please enter 0 or more.`, 'warning');
-                    input.val(input.data('original')); // Revert
-                    isValid = false;
-                    return false; // Exit .each loop
-                }
-                guestDetails[index] = { count: count, name: name, price: price }; // Store details
-                totalGuests += count;
+            data.guest_details.push({
+                count: count,
+                name: name,
+                price: price
             });
+        });
 
-            if (!isValid) {
-                button.hide(); // Hide button if validation failed
-                return; // Stop processing
-            }
+        // Collect goods/services details
+        const goodsServiceInputs = row.find('.goods-service-count');
+        goodsServiceInputs.each(function () {
+            const input = $(this);
+            const index = input.data('service-index');
+            const count = parseInt(input.val(), 10) || 0;
+            const name = input.closest('td').data('name'); // Retrieve name from data attribute
+            const price = parseFloat(input.closest('td').data('price')) || 0;
 
-            data.guest_details = guestDetails; // Add collected details to data
-
-        } else if (guestCountInput.length > 0) {
-            // Using Single Guest Count
-            data.action = 'update_registration_guest_count'; // Use the general update action
-            const count = parseInt(guestCountInput.val(), 10);
-
-            if (isNaN(count) || count < 0) {
-                 showAdminNotice('Guest count must be 0 or more.', 'warning');
-                 guestCountInput.val(guestCountInput.data('original')); // Revert
-                 button.hide();
-                 return; // Stop processing
-            }
-            data.guest_count = count; // Add single count to data
-        } else {
-            console.error('Could not find guest count inputs for this row.');
-            return; // No inputs found
-        }
+            data.goods_services.push({
+                count: count,
+                name: name,
+                price: price
+            });
+        });
 
         // Send AJAX request
         $.ajax({
@@ -1486,106 +1496,399 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: data,
             beforeSend: function () {
-                 button.prop('disabled', true).find('.dashicons').removeClass('dashicons-yes').addClass('dashicons-update spinning');
-                 button.find('.button-text').text('Updating...');
+                button.prop('disabled', true).text('Updating...');
             },
             success: function (response) {
                 if (response.success) {
                     // Update original values on inputs
-                    if (pricingOptionInputs.length > 0) {
-                        pricingOptionInputs.each(function() {
-                            $(this).data('original', $(this).val());
-                        });
-                    } else if (guestCountInput.length > 0) {
-                        guestCountInput.data('original', guestCountInput.val());
-                    }
+                    pricingOptionInputs.each(function () {
+                        $(this).data('original', $(this).val());
+                    });
+                    goodsServiceInputs.each(function () {
+                        $(this).data('original', $(this).val());
+                    });
 
                     button.hide(); // Hide button on success
-
-                    // Show temporary success checkmark
                     showAdminNotice('Guest counts updated successfully.', 'success');
-                    var successIcon = $('<span class="dashicons dashicons-yes center" style="color: green; line-height: 32px;"></span>');
-                    button.after(successIcon);
-                    setTimeout(function() {
-                        successIcon.fadeOut(function() { $(this).remove(); });
-                    }, 2000);
-
-                    // Recalculate totals for the table
-                    calculateTotals(button.closest('.wp-list-table'));
-
                 } else {
-                     // --- REPLACED alert ---
                     showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
-                    // Revert values on error
-                    if (pricingOptionInputs.length > 0) {
-                        pricingOptionInputs.each(function() { $(this).val($(this).data('original')); });
-                    } else if (guestCountInput.length > 0) {
-                        guestCountInput.val(guestCountInput.data('original'));
-                    }
                 }
             },
             error: function (xhr, status, error) {
                 console.error('AJAX Error:', status, error);
-                 // --- REPLACED alert ---
-                showAdminNotice('Error updating guest count. Please try again.', 'error');
-                 // Revert values on error
-                 if (pricingOptionInputs.length > 0) {
-                    pricingOptionInputs.each(function() { $(this).val($(this).data('original')); });
-                } else if (guestCountInput.length > 0) {
-                    guestCountInput.val(guestCountInput.data('original'));
-                }
+                showAdminNotice('Error updating guest counts. Please try again.', 'error');
             },
             complete: function () {
-                 // Restore button state
-                 button.prop('disabled', false).find('.dashicons').removeClass('dashicons-update spinning').addClass('dashicons-yes');
-                 button.find('.button-text').text('Update');
-                 // Hide button if values match original after potential revert
-                 let changed = false;
-                 if (pricingOptionInputs.length > 0) {
-                    pricingOptionInputs.each(function() { if ($(this).val() != $(this).data('original')) changed = true; });
-                 } else if (guestCountInput.length > 0) {
-                    if (guestCountInput.val() != guestCountInput.data('original')) changed = true;
-                 }
-                 if (!changed) button.hide();
+                button.prop('disabled', false).text('Update');
             }
         });
     });
 
+    function formatCurrency(amount, currencySymbol, currencyFormat) {
+        const decimalSeparator = '.';
+        const thousandSeparator = ',';
 
-    // --- Commented out block with alerts remains commented ---
-    // Handle the "Copy" button click
-    // $('#copy-selected-event').on('click', function () {
-    //     const selectedEventName = $('#previous-events-dropdown').val();
-    //     const newEventDate = prompt('Enter the new date for the copied event (YYYY-MM-DD):');
-    //
-    //     if (!selectedEventName || !newEventDate) {
-    //         alert('Please select an event and provide a new date.');
-    //         return;
-    //     }
-    //
-    //     // Send AJAX request to copy the event
-    //     $.ajax({
-    //         url: ajaxurl,
-    //         type: 'POST',
-    //         data: {
-    //             action: 'copy_event_by_name',
-    //             event_name: selectedEventName,
-    //             new_event_date: newEventDate,
-    //             security: eventAdmin.copy_event_nonce
-    //         },
-    //         success: function (response) {
-    //             if (response.success) {
-    //                 alert('Event copied successfully.');
-    //                 location.reload();
-    //             } else {
-    //                 alert(response.data.message || 'Failed to copy event.');
-    //             }
-    //         },
-    //         error: function () {
-    //             alert('An error occurred while copying the event.');
-    //         }
-    //     });
+        // Format the amount with the specified number of decimals
+        let formattedAmount = parseFloat(amount).toFixed(currencyFormat);
+        let parts = formattedAmount.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+        formattedAmount = parts.join(decimalSeparator);
+
+        // Return the formatted amount with the currency symbol
+        return currencySymbol + formattedAmount;
+    }
+
+    function updateRowTotalPrice(row) {
+        let totalPrice = 0;
+
+        // Retrieve currency settings from the DOM
+        const currencySymbol = $('#currency-symbol').data('currency-symbol') || '$';
+        const currencyFormat = $('#currency-format').data('currency-format') === 0 ? 0 : parseInt($('#currency-format').data('currency-format'), 10) || 2;
+
+        // Calculate total price from pricing options
+        row.find('.pricing-option-guest-count').each(function () {
+            const count = parseInt($(this).val(), 10) || 0;
+            const price = parseFloat($(this).closest('td').data('price')) || 0;
+            totalPrice += count * price;
+        });
+
+        // Calculate total price from goods/services
+        row.find('.goods-service-count').each(function () {
+            const count = parseInt($(this).val(), 10) || 0;
+            const price = parseFloat($(this).closest('td').data('price')) || 0;
+            totalPrice += count * price;
+        });
+
+        // Format and update the Total Price column in the row
+        row.find('.total-price').text(formatCurrency(totalPrice, currencySymbol, currencyFormat));
+    }
+
+    // Update all rows on page load
+    $('.wp-list-table tbody tr').each(function () {
+        updateRowTotalPrice($(this));
+    });
+
+    // Update total price dynamically when inputs change
+    $('.pricing-option-guest-count, .goods-service-count').on('input', function () {
+        const row = $(this).closest('tr');
+        const table = row.closest('.wp-list-table'); // Get the specific table
+        updateRowTotalPrice(row); // Update the row's total price
+        updateTableTotals(table); // Update the table footer totals
+    });
+
+    // $('#add-goods-service-option').on('click', function () {
+    //     const index = $('#goods-services-container .goods-service-option').length;
+    //     $('#goods-services-container').append(`
+    //         <div class="goods-service-option">
+    //             <input type="text" name="goods_services[${index}][name]" placeholder="Item Name" required>
+    //             <input type="number" name="goods_services[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
+    //             <input type="number" name="goods_services[${index}][limit]" placeholder="Limit (0 for unlimited)" min="0">
+    //             <button type="button" class="remove-goods-service-option button">Remove</button>
+    //         </div>
+    //     `);
     // });
-    // --- End commented block ---
 
+    $(document).on('click', '.remove-goods-service-option', function () {
+        $(this).closest('.goods-service-option').remove();
+    });
+
+    // Close modal when clicking the 'x' button
+    $(document).on('click', '.close-modal', function () {
+        $(this).closest('.email-modal').hide();
+    });
+
+    // Close modal when clicking the cancel button
+    $(document).on('click', '.cancel-registration', function () {
+        $('#add-registration-modal').hide();
+    });
+
+    // Close modal when clicking outside the modal content
+    // $(document).on('click', '.modal', function (event) {
+    //     if ($(event.target).hasClass('email-modal')) {
+    //         $(this).hide();
+    //     }
+    // });
+
+    $('.wp-list-table tbody tr').each(function () {
+        updateRowTotalPrice($(this));
+    });
+
+    function updateTableTotals(table) {
+        let totalGuests = 0;
+        let totalPrice = 0;
+        const currencySymbol = $('#currency-symbol').data('currency-symbol') || '$';
+        const currencyFormat = $('#currency-format').data('currency-format') === 0 ? 0 : parseInt($('#currency-format').data('currency-format'), 10) || 2;
+
+        // Reset totals for pricing options and goods/services in the specific table
+        table.find('.total-pricing-option').text(0);
+        table.find('.total-goods-service').text(0);
+
+
+
+        if (table.find('.simple-guest-count').length != 0) {
+            table.find('.simple-guest-count').each(function () {
+                totalGuests += parseInt($(this).val());
+            });
+        }
+        // Update totals for pricing options
+        table.find('.pricing-option-guest-count').each(function () {
+            const input = $(this);
+            const row = input.closest('tr');
+            const index = input.data('pricing-index');
+            const count = parseInt(input.val(), 10) || 0;
+
+            // Update column total
+            const columnTotalCell = table.find(`.total-pricing-option[data-pricing-index="${index}"]`);
+            const currentTotal = parseInt(columnTotalCell.text(), 10) || 0;
+            columnTotalCell.text(currentTotal + count);
+
+            // Update total guests
+            totalGuests += count;
+        });
+
+        // Update totals for goods/services
+        table.find('.goods-service-count').each(function () {
+            const input = $(this);
+            const row = input.closest('tr');
+            const index = input.data('service-index');
+            const count = parseInt(input.val(), 10) || 0;
+
+            // Update column total
+            const columnTotalCell = table.find(`.total-goods-service[data-service-index="${index}"]`);
+            const currentTotal = parseInt(columnTotalCell.text(), 10) || 0;
+            columnTotalCell.text(currentTotal + count);
+
+            // Update total guests
+            // totalGuests += count;
+        });
+
+        // Update total price
+        table.find('tbody tr').each(function () {
+            const row = $(this);
+            const rowTotalPrice = parseFloat(row.find('.total-price').text().replace(/[^0-9.-]+/g, '')) || 0;
+            totalPrice += rowTotalPrice;
+        });
+
+        // Update footer totals for the specific table
+        table.find('.event-total-guests').text(totalGuests);
+        table.find('.event-total-price').text(formatCurrency(totalPrice, currencySymbol, currencyFormat));
+    }
+
+    // Bind the updateTableTotals function to input changes
+    $(document).on('input', '.pricing-option-guest-count, .goods-service-count, .simple-guest-count', function () {
+        const row = $(this).closest('tr');
+        updateRowTotalPrice(row); // Update the row's total price
+        updateTableTotals(row.closest('.wp-list-table')); // Update the table footer totals
+    });
+
+    // Initialize totals on page load
+    $(document).ready(function () {
+        $('.wp-list-table').each(function () {
+            const table = $(this);
+            table.find('tbody tr').each(function () {
+                updateRowTotalPrice($(this)); // Ensure row totals are calculated
+            });
+            updateTableTotals(table); // Ensure footer totals are calculated for the specific table
+        });
+    });
+
+    $('#add-payment-method').on('click', function () {
+        const index = $('#payment-methods-list .payment-method').length;
+        $('#payment-methods-list').append(`
+            <div class="payment-method">
+                <select name="payment_methods[${index}][type]" required>
+                    <option value="online">Online</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="cash">Cash</option>
+                </select>
+                <input type="text" name="payment_methods[${index}][description]" placeholder="Description" required>
+                <input type="url" name="payment_methods[${index}][link]" placeholder="Payment Link (for online)">
+                <textarea name="payment_methods[${index}][transfer_details]" placeholder="Transfer Details (for transfer)" rows="5" required></textarea>
+                <button type="button" class="remove-payment-method button">Remove</button>
+            </div>
+        `);
+    });
+
+    $(document).on('click', '.remove-payment-method', function () {
+        $(this).closest('.payment-method').remove();
+    });
+
+    // Function to toggle the payment methods section
+    function togglePaymentMethods() {
+        const pricingOptionsCount = $('#pricing-options-container .pricing-option').length;
+        const goodsServicesCount = $('#goods-services-container .goods-service-option').length;
+
+        if (pricingOptionsCount > 0 || goodsServicesCount > 0) {
+            $('#payment-methods-container').show();
+        } else {
+            $('#payment-methods-container').hide();
+            clearPaymentMethods(); // Clear payment methods when hidden
+        }
+    }
+
+    // Function to clear payment methods
+    function clearPaymentMethods() {
+        $('#payment-methods-list').empty(); // Remove all payment methods
+    }
+
+    // Add Pricing Option
+    $(document).on('click', '#add-pricing-option', function () {
+        const index = $('#pricing-options-container .pricing-option').length;
+        $('#pricing-options-container').append(`
+            <div class="pricing-option">
+                <input type="text" name="pricing_options[${index}][name]" placeholder="Category Name" required>
+                <input type="number" name="pricing_options[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
+                <button type="button" class="remove-pricing-option button">Remove</button>
+            </div>
+        `);
+        togglePaymentMethods(); // Check if payment methods should be shown
+    });
+
+    // Remove Pricing Option
+    $(document).on('click', '.remove-pricing-option', function () {
+        $(this).closest('.pricing-option').remove();
+        reindexPricingOptions(); // Reindex remaining pricing options
+        togglePaymentMethods(); // Check if payment methods should be hidden
+    });
+
+    // Add Goods/Service Option
+    $(document).on('click', '#add-goods-service-option', function () {
+        const index = $('#goods-services-container .goods-service-option').length;
+        $('#goods-services-container').append(`
+            <div class="goods-service-option">
+                <input type="text" name="goods_services[${index}][name]" placeholder="Item Name" required>
+                <input type="number" name="goods_services[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
+                <input type="number" name="goods_services[${index}][limit]" placeholder="Limit (0 for unlimited)" min="0">
+                <button type="button" class="remove-goods-service-option button">Remove</button>
+            </div>
+        `);
+        togglePaymentMethods(); // Check if payment methods should be shown
+    });
+
+    // Remove Goods/Service Option
+    $(document).on('click', '.remove-goods-service-option', function () {
+        $(this).closest('.goods-service-option').remove();
+        reindexGoodsServices(); // Reindex remaining goods/services
+        togglePaymentMethods(); // Check if payment methods should be hidden
+    });
+
+    // Reindex Pricing Options
+    function reindexPricingOptions() {
+        $('#pricing-options-container .pricing-option').each(function (index) {
+            $(this).find('input[name^="pricing_options"]').each(function () {
+                const name = $(this).attr('name');
+                const updatedName = name.replace(/\[\d+\]/, `[${index}]`);
+                $(this).attr('name', updatedName);
+            });
+        });
+    }
+
+    // Reindex Goods/Services
+    function reindexGoodsServices() {
+        $('#goods-services-container .goods-service-option').each(function (index) {
+            $(this).find('input[name^="goods_services"]').each(function () {
+                const name = $(this).attr('name');
+                const updatedName = name.replace(/\[\d+\]/, `[${index}]`);
+                $(this).attr('name', updatedName);
+            });
+        });
+    }
+
+    // Initialize payment methods visibility on page load
+    togglePaymentMethods();
+
+    // Handle payment status change
+    $(document).on('change', '.change-payment-status', function () {
+        const select = $(this);
+        const registrationId = select.data('registration-id');
+        const nonce = select.data('nonce');
+        const newStatus = select.val();
+
+        // Disable the dropdown while processing
+        select.prop('disabled', true);
+
+        // Send AJAX request to update the payment status
+        $.ajax({
+            url: eventAdmin.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'update_payment_status',
+                registration_id: registrationId,
+                payment_status: newStatus,
+                security: nonce
+            },
+            success: function (response) {
+                if (response.success) {
+                    showAdminNotice('Payment status updated successfully.', 'success');
+                } else {
+                    showAdminNotice(response.data.message || 'Error updating payment status.', 'error');
+                }
+            },
+            error: function () {
+                showAdminNotice('Error updating payment status.', 'error');
+            },
+            complete: function () {
+                // Re-enable the dropdown
+                select.prop('disabled', false);
+            }
+        });
+    });
+
+    // Handle "View Details" button click
+    $(document).on('click', '.view-registration-details', function () {
+        const button = $(this);
+        const registrationId = button.data('registration-id');
+        const nonce = button.data('nonce');
+        const modal = $('#registration-details-modal');
+        const content = $('#registration-details-content');
+
+        // Clear previous content
+        content.html('<p>Loading...</p>');
+
+        // Show the modal
+        modal.show();
+
+        // Fetch registration details via AJAX
+        $.ajax({
+            url: eventAdmin.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'view_registration_details',
+                registration_id: registrationId,
+                security: nonce
+            },
+            success: function (response) {
+                if (response.success) {
+                    content.html(response.data.html);
+                } else {
+                    content.html('<p>Error loading registration details.</p>');
+                }
+            },
+            error: function () {
+                content.html('<p>Error loading registration details.</p>');
+            }
+        });
+    });
+
+    // Close the modal
+    // $(document).on('click', '.close-modal', function () {
+    //     $(this).closest('.registration-details-modal').hide();
+    // });
+
+    // Close the modal when the "X" button is clicked
+    $(document).on('click', '.close-modal', function () {
+        $(this).closest('.modal').hide();
+    });
+
+    // Close the modal when the "Close" button is clicked
+    $(document).on('click', '.button.close-modal', function () {
+        $(this).closest('.modal').hide();
+    });
+
+    // Prevent closing the modal by clicking outside of it
+    $(document).on('click', '.modal', function (e) {
+        if ($(e.target).is('.modal')) {
+            e.stopPropagation(); // Do nothing when clicking on the modal background
+        }
+    });
 }); // End Ready Function

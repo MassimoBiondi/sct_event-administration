@@ -72,6 +72,29 @@
                         <p class="description">Currency code (e.g., USD, EUR, GBP).</p>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row"><label for="start_of_week"><?php _e('Start of the week', 'sct-event-administration'); ?></label></th>
+                    <td>
+                        <select name="start_of_week" id="start_of_week">
+                            <?php
+                            $days = [
+                                0 => __('Sunday'),
+                                1 => __('Monday'),
+                                2 => __('Tuesday'),
+                                3 => __('Wednesday'),
+                                4 => __('Thursday'),
+                                5 => __('Friday'),
+                                6 => __('Saturday'),
+                            ];
+                            $selected = $sct_settings['start_of_week'];
+                            foreach ($days as $num => $label) {
+                                echo '<option value="' . esc_attr($num) . '"' . selected($selected, $num, false) . '>' . esc_html($label) . '</option>';
+                            }
+                            ?>
+                        </select>
+                        <p class="description"><?php _e('Choose which day the calendar week should start on.', 'sct-event-administration'); ?></p>
+                    </td>
+                </tr>
             </table>
         </div>
 
@@ -122,14 +145,50 @@
                         <label for="confirmation_template">Confirmation Email Template</label>
                     </th>
                     <td>
-                        <textarea id="confirmation_template" 
-                                  name="confirmation_template" 
-                                  rows="10" 
-                                  class="large-text code"><?php echo esc_textarea($sct_settings['confirmation_template']); ?></textarea>
-                        <p class="description">
-                            Available placeholders: {event_name}, {name}, {email}, {guest_count}, 
-                            {event_date}, {event_time}, {location_name}
-                        </p>
+                        <?php 
+                        wp_editor(
+                            $sct_settings['confirmation_template'], // Load the current template
+                            'confirmation_template', // Unique ID for the editor
+                            array(
+                                'textarea_name' => 'confirmation_template', // Name attribute for the form submission
+                                'textarea_rows' => 15, // Number of rows for the editor
+                                'media_buttons' => true, // Allow media uploads
+                                'teeny' => false, // Use the full editor toolbar
+                                'quicktags' => true, // Enable quicktags for HTML editing
+                                'tinymce' => array(
+                                    'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,fullscreen,wp_adv',
+                                    'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
+                                    'content_css' => get_stylesheet_directory_uri() . '/editor-style.css', // Optional: Add custom editor styles
+                                )
+                            )
+                        );
+                        ?>
+                        <div class="form-field placeholder-info">
+                            <p><strong>Available placeholders:</strong></p>
+                            <p>
+                                <code>{event_name}</code> - Event name<br>
+                                <code>{name}</code> - Registrant's name<br>
+                                <code>{email}</code> - Registrant's email<br>
+                                <code>{guest_count}</code> - Number of guests<br>
+                                <code>{registration_date}</code> - Registration date<br>
+                                <code>{event_date}</code> - Event date<br>
+                                <code>{event_time}</code> - Event time<br>
+                                <code>{location_name}</code> - Event location name<br>
+                                <code>{location_url}</code> - Event location URL<br>
+                                <code>{location_link}</code> - Event location link<br>
+                                <code>{guest_capacity}</code> - Event guest capacity<br>
+                                <code>{member_only}</code> - Member-only event<br>
+                                <code>{total_price}</code> - Total price<br>
+                                <code>{remaining_capacity}</code> - Remaining capacity<br>
+                                <code>{payment_status}</code> - Payment status<br>
+                                <code>{payment_type}</code> - Payment type<br>
+                                <code>{payment_name}</code> - Payment name<br>
+                                <code>{payment_link}</code> - Payment link<br>
+                                <code>{payment_description}</code> - Payment description<br>
+                                <code>{payment_method_details}</code> - Payment method details<br>
+                                <code>{pricing_overview}</code> - Pricing overview table<br>
+                            </p>
+                        </div>
                     </td>
                 </tr>
             </table>
