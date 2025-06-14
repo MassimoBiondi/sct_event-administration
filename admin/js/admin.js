@@ -293,7 +293,6 @@ jQuery(document).ready(function($) {
             <p><strong>Member Only:</strong> ${event.member_only ? 'Yes' : 'No'}</p>
             <p><strong>Member Price:</strong> ${event.member_price}</p>
             <p><strong>Non-Member Price:</strong> ${event.non_member_price}</p>
-            <p><strong>Children Counted Separately:</strong> ${event.children_counted_separately == 1 ? 'Yes' : 'No'}</p>
         `;
         $('#event-details').html(details);
         modal.show();
@@ -1092,16 +1091,10 @@ jQuery(document).ready(function($) {
         var data = {
             action: 'update_registration', // Single action for all these types
             registration_id: registrationId,
-            member_guests: memberGuestCount,
-            non_member_guests: nonMemberGuestCount,
-            children_guests: childrenGuestCount,
             security: eventAdmin.update_registration_nonce // Include the nonce
         };
 
         // Ensure the count being updated is correctly set in the data
-        if (guestTypeClass === 'member-guest-count') data.member_guests = newGuestCount;
-        if (guestTypeClass === 'non-member-guest-count') data.non_member_guests = newGuestCount;
-        if (guestTypeClass === 'children-guest-count') data.children_guests = newGuestCount;
 
 
         $.ajax({

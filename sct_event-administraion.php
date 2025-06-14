@@ -2,7 +2,7 @@
 /*
 Plugin Name: SCT Event Administration
     Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-    Version: 2.0
+    Version: 2.2
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -28,6 +28,9 @@ function event_admin_activate() {
 
     // Drop the sct_event_emails table if it exists
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_event_emails");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_event_registrations");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_events");
+
     
     $sql = "CREATE TABLE {$wpdb->prefix}sct_events (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -43,7 +46,6 @@ function event_admin_activate() {
         pricing_options longtext DEFAULT NULL,
         goods_services longtext NULL,
         member_only tinyint(1) DEFAULT 0,
-        children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         custom_email_template longtext DEFAULT NULL,
         thumbnail_url varchar(255) DEFAULT NULL,
@@ -209,9 +211,9 @@ function event_admin_update_database() {
         pricing_options longtext DEFAULT NULL,
         goods_services longtext NULL,
         member_only tinyint(1) DEFAULT 0,
-        children_counted_separately tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         custom_email_template longtext DEFAULT NULL,
+        thumbnail_url varchar(255) DEFAULT NULL,
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
         payment_methods text DEFAULT NULL,

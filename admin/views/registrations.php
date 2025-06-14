@@ -18,37 +18,6 @@
         $total_registered = $total_registered ?: 0;
         $remaining_capacity = ($event->guest_capacity > 0) ? $event->guest_capacity - $total_registered : 'n/a';
 
-        // Get total member and non-member guests
-        $total_member_guests = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(member_guests) FROM {$wpdb->prefix}sct_event_registrations WHERE event_id = %d",
-            $event->id
-        ));
-        $total_member_guests = $total_member_guests ?: 0;
-
-        $total_non_member_guests = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(non_member_guests) FROM {$wpdb->prefix}sct_event_registrations WHERE event_id = %d",
-            $event->id
-        ));
-        $total_non_member_guests = $total_non_member_guests ?: 0;
-
-        $total_children_guests = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(children_guests) FROM {$wpdb->prefix}sct_event_registrations WHERE event_id = %d",
-            $event->id
-        ));
-        $total_children_guests = $total_children_guests ?: 0;
-
-        $non_null_count = 0;
-        // Check each field and increment the count if it's not null
-        if ($total_member_guests > 0) {
-            $non_null_count++;
-        }
-        if ($total_non_member_guests > 0) {
-            $non_null_count++;
-        }
-        if ($total_children_guests > 0) {
-            $non_null_count++;
-        }
-        $total_guests = $total_member_guests + $total_non_member_guests + $total_children_guests;
     ?>
         <div class="event-registrations">
             <div class="event-header">
@@ -381,8 +350,6 @@
                         <code>{name}</code> - Registrant's name<br>
                         <code>{email}</code> - Registrant's email<br>
                         <code>{guest_count}</code> - Number of guests<br>
-                        <code>{member_guests}</code> - Number of member guests<br>
-                        <code>{non_member_guests}</code> - Number of non-member guests<br>
                         <code>{event_name}</code> - Event name<br>
                         <code>{event_date}</code> - Event date<br>
                         <code>{event_time}</code> - Event time<br>
@@ -391,13 +358,9 @@
                         <code>{location_link}</code> - Event location link<br>
                         <code>{location_url}</code> - Event location URL<br>
                         <code>{guest_capacity}</code> - Event guest capacity<br>
-                        <code>{member_price}</code> - Member price<br>
-                        <code>{non_member_price}</code> - Non-member price<br>
                         <code>{member_only}</code> - Member-only event<br>
                         <code>{total_price}</code> - Total price<br>
                         <code>{remaining_capacity}</code> - Remaining capacity<br>
-                         <code>{children_counted_separately}</code> - Children counted separately<br>
-                        <code>{children_guests}</code> - Number of children guests<br>
                     </p>
                 </div>
                 

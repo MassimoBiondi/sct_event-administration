@@ -568,7 +568,7 @@ class EventPublic {
             $notification_message_html,
             $notification_headers
         );
-        $this->log_email($event_data['id'], 'notification', $sct_settings['admin_email'], $notification_subject, $notification_message_html, $notification_sent ? 'sent' : 'failed');
+        // $this->log_email($event_data['id'], 'notification', $sct_settings['admin_email'], $notification_subject, $notification_message_html, $notification_sent ? 'sent' : 'failed');
 
         // Log email statuses
         error_log('Confirmation email ' . ($confirmation_sent ? 'sent' : 'failed') . ' for: ' . $registration_data['email']);
@@ -592,7 +592,7 @@ class EventPublic {
                 'sent_date'       => current_time('mysql'),
                 'status'          => $status,
             ),
-            array('%d', '%d', '%s', '%s', '%s', '%s', '%s')
+            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
         );
     }
     
@@ -613,6 +613,7 @@ class EventPublic {
 
         // Define placeholders and their replacements
         $placeholders = array(
+            '{registration_id}' => $data['registration_id'] ?? '',
             '{event_name}' => $data['event_name'] ?? '',
             '{name}' => $data['name'] ?? '',
             '{email}' => $data['email'] ?? '',

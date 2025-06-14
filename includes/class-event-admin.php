@@ -293,7 +293,6 @@ class EventAdmin {
             'max_guests_per_registration' => intval($_POST['max_guests_per_registration']),
             'admin_email' => sanitize_email($_POST['admin_email']),
             'member_only' => isset($_POST['member_only']) ? 1 : 0,
-            'children_counted_separately' => isset($_POST['children_counted_separately']) ? 1 : 0,
             'by_lottery' => isset($_POST['by_lottery']) ? 1 : 0,
             'custom_email_template' => isset($_POST['custom_email_template']) ? wp_unslash($_POST['custom_email_template']) : null,
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
@@ -328,21 +327,20 @@ class EventAdmin {
             '%s', // event_date
             '%s', // event_time
             '%s', // location_name
-            '%s', // location_link
             '%s', // description
+            '%s', // location_link
             '%d', // guest_capacity
             '%d', // max_guests_per_registration
             '%s', // admin_email
-            '%f', // member_price
-            '%f', // non_member_price
+            '%s', // pricing_options
+            '%s', // goods_services
             '%d', // member_only
-            '%d', // children_counted_separately
             '%d', // by_lottery
             '%s', // custom_email_template
             '%s', // thumbnail_url
             '%s', // publish_date
-            '%s',  // unpublish_date
-            '%s'   // pricing_options
+            '%s', // unpublish_date
+            '%s'  // payment_methods
         );
 
         if (isset($_POST['event_id'])) {
@@ -765,6 +763,7 @@ class EventAdmin {
         ));
 
         $placeholders = array(
+            '{registration_id}' => $data['registration_id'] ?? '',
             '{event_name}' => $data['event_name'] ?? '',
             '{name}' => $data['name'] ?? '',
             '{email}' => $data['email'] ?? '',
@@ -1020,11 +1019,12 @@ class EventAdmin {
                "Name: {name}\n" .
                "Email: {email}\n" .
                "Number of Guests: {guest_count}\n" .
+               "{pricing_breakdown}" .
                "Registration Date: {registration_date}\n\n" .
                "Event Details:\n" .
-               "{pricing_breakdown}\n\n" .
-               "Date: {event_date}\n" .
-               "Time: {event_time}\n" .
+               "Event Name: {event_name}\n" .
+               "Event Date: {event_date}\n" .
+               "Event Time: {event_time}\n" .
                "Location: {location_name}";
     }
 
@@ -1033,18 +1033,34 @@ class EventAdmin {
     }
     
     private function get_default_confirmation_template() {
-        return "Dear {name},\n\n" .
-               "Thank you for registering for {event_name}.\n\n" .
-               "Registration Details:\n" .
-               "Number of Guests: {guest_count}\n" .
-               "Event Date: {event_date}\n" .
-               "Event Time: {event_time}\n" .
-               "Location: {location_name}\n\n" .
-               "{pricing_breakdown}\n\n" .
-               "We look forward to seeing you!\n\n" .
-               "{admin_email}\n\n" .
-               "Best regards,\n" .
-               "The Event Team";
+        return "<div class='header'>
+            <h1>Registration Confirmed!</h1>
+            <p>Your spot for <strong>AGM</strong> is secured.</p>
+        </div>
+        <div class='content-section'><strong>Hello Test,</strong>
+            Thank you for registering for <strong>AGM</strong>!
+            We're excited to see you there and have prepared this confirmation for your records
+        </div>
+        <div class='content-section'>
+            <h3>Event Details</h3>
+            <p><strong class='strong-text'>Event:</strong>{event_name}</p>
+            <p><strong class='strong-text'>Date:</strong>{event_date}</p>
+            <p><strong class='strong-text'>Time:</strong>{event_time}</p>
+            <p><strong class='strong-text'>Location:</strong>{location_name} ({location_link} )</p>
+            <p>{description}</p>
+        </div>
+        <div class='content-section'>
+        <h3>Your Registration</h3>
+            <p><strong class='strong-text'>Registrant Name:</strong>{name}
+            <strong class='strong-text'>Registrant Email:</strong>{email}</p>
+            {pricing_overview}
+        </div>
+        {payment_method_details}
+        <div class='footer'>
+            We look forward to welcoming you to AGM!
+            Best regards, The Swiss Club Tokyo Event Team
+            {reservation_link}
+        </div>";
     }
 
     public function getDefaultConfirmationTemplate() {
@@ -1326,33 +1342,7 @@ class EventAdmin {
         );
     }
     
-    public function update_children_guest_count() {
-        check_ajax_referer('update_registration_nonce', 'security');
-
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(array('message' => 'Unauthorized'));
-            return;
-        }
-
-        global $wpdb;
-
-        $registration_id = intval($_POST['registration_id']);
-        $children_guests = intval($_POST['children_guests']);
-
-        $result = $wpdb->update(
-            $wpdb->prefix . 'sct_event_registrations',
-            array('children_guests' => $children_guests),
-            array('id' => $registration_id),
-            array('%d'),
-            array('%d')
-        );
-
-        if ($result !== false) {
-            wp_send_json_success(array('message' => 'Children guest count updated successfully.'));
-        } else {
-            wp_send_json_error(array('message' => 'Failed to update children guest count.'));
-        }
-    }    
+  
 
     public function update_registration_guest_counts() {
         // Verify nonce
@@ -1836,23 +1826,7 @@ class EventAdmin {
     }
 } // End Class
 
-add_action('wp_ajax_update_children_guest_count', array('EventAdmin', 'update_children_guest_count'));
-// add_filter('set-screen-option', array('EventAdmin', 'save_screen_options'), 10, 3);
 
-// Hook into the WordPress export process
-// add_action('admin_init', [new EventAdmin(), 'export_custom_tables']);
-
-// function enqueue_media_uploader() {
-//     wp_enqueue_media();
-//     wp_enqueue_script(
-//         'event-admin-thumbnail',
-//         plugins_url('admin/js/thumbnail-uploader.js', __FILE__),
-//         array('jquery'),
-//         '1.0',
-//         true
-//     );
-// }
-// add_action('admin_enqueue_scripts', 'enqueue_media_uploader');
 
 function fetch_previous_events() {
     // Verify nonce
