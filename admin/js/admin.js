@@ -290,9 +290,11 @@ jQuery(document).ready(function($) {
             <p><strong>Available:</strong> ${event.available}</p>
             <p><strong>Max Guests per Registration:</strong> ${event.max_guests_per_registration}</p>
             <p><strong>Organizer:</strong> ${event.admin_email}</p>
-            <p><strong>Member Only:</strong> ${event.member_only ? 'Yes' : 'No'}</p>;
-        $('#event-details').html(details);
-        modal.show();
+            <p><strong>Member Only:</strong> ${event.member_only ? 'Yes' : 'No'}</p>
+        `;
+
+    $('#event-details').html(details);
+    modal.show();
     });
 
 
