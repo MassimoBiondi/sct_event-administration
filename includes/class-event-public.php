@@ -556,6 +556,11 @@ class EventPublic {
             $from_email = 'event@' . $wp_domain;
         }
 
+        // For notification email, always use WP admin email as from
+        $wp_admin_email = get_option('admin_email');
+        $notification_to = !empty($event_data['admin_email']) ? $event_data['admin_email'] : $sct_settings['admin_email'];
+
+
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
@@ -564,8 +569,7 @@ class EventPublic {
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
-            'Reply-To: ' . $reply_to_email
+            'From: Event @ ' . get_bloginfo('name') . ' <' . $wp_admin_email . '>'
         );
 
         // Send the confirmation email
@@ -579,7 +583,7 @@ class EventPublic {
 
         // Send the admin notification email
         $notification_sent = wp_mail(
-            $sct_settings['admin_email'],
+            $notification_to,
             $notification_subject,
             $notification_message_html,
             $notification_headers
