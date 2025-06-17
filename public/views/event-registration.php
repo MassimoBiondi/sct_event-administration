@@ -35,30 +35,6 @@
     </div>
     <?php
         $sct_settings = get_option('event_admin_settings', []);
-        $member_price = $event->member_price;
-        $non_member_price = $event->non_member_price;
-
-        // Determine the price logic
-        if ($member_price > 0 && $non_member_price == 0) {
-            $event->member_only = 1; // Automatically set the event to member-only
-        }
-
-        if ($event->member_only) {
-            $can_register = true;
-            $price_type = 'member_only';
-        } elseif ($member_price > 0 && $non_member_price > 0) {
-            $can_register = true;
-            $price_type = 'both';
-        } elseif ($member_price == 0 && $non_member_price > 0) {
-            $can_register = true;
-            $price_type = 'non_member_only';
-        } else {
-            $can_register = true;
-            $price_type = 'free';
-        }
-        $min_val = ($price_type == 'both') ? 0 : 1;
-
-        // Check if the event is unpublished
         $is_unpublished = !empty($event->unpublish_date) && strtotime($event->unpublish_date) <= time();
     ?>
 
@@ -66,12 +42,16 @@
         <div class="registration-closed">
             <p>Registration for this event is closed.</p>
         </div>
-    <?php elseif (!$can_register): ?>
-        <div class="registration-closed">
-            <p>Sorry, this event is for members only.</p>
-        </div>
     <?php elseif ($event->guest_capacity == 0 || $remaining_capacity > 0): ?>
         <div class="registration-form-container">
+            <?php
+                if(!empty($event->member_only))
+                {
+                    echo '<div class="uk-alert-warning uk-alert event-member-only uk-margin-remove uk-text-center" uk-alert>
+                            <h3>This event is for members only.</h3>
+                          </div>';
+                }
+            ?>
             <form id="event-registration-form" class="registration-form uk-form-horizontal">
                 <input type="hidden" name="action" value="register_event">
                 <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>">

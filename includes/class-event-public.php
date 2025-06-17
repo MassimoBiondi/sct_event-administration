@@ -161,7 +161,7 @@ class EventPublic {
 
         // Check if the user is a member
         $is_member = is_user_logged_in() && current_user_can('member'); // Adjust this condition based on your membership logic
-        $price = $is_member ? $event->member_price : $event->non_member_price;
+        // $price = $is_member ? $event->member_price : $event->non_member_price;
     
         ob_start();
         include EVENT_ADMIN_PATH . 'public/views/event-registration.php';
@@ -540,16 +540,32 @@ class EventPublic {
         $notification_message_html = nl2br($notification_message);
         $notification_message_html = '<html><head><meta charset="UTF-8"></head><body>' . $notification_message_html . '</body></html>';
 
+        // Determine reply-to address for confirmation email
+        $reply_to_email = !empty($event_data['admin_email']) ? $event_data['admin_email'] : $sct_settings['admin_email'];
+
+        // Get the domain of the WP site
+        $site_url = get_bloginfo('url');
+        $parsed_url = parse_url($site_url);
+        $wp_domain = isset($parsed_url['host']) ? $parsed_url['host'] : '';
+        $wp_domain = preg_replace('/^www\./', '', $wp_domain);
+
+        // Check if reply-to is on the same domain
+        $reply_to_domain = substr(strrchr($reply_to_email, "@"), 1);
+        $from_email = $sct_settings['admin_email'];
+        if (strcasecmp($reply_to_domain, $wp_domain) !== 0) {
+            $from_email = 'event@' . $wp_domain;
+        }
+
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $sct_settings['admin_email'] . '>',
-            'Reply-To: ' . $sct_settings['admin_email']
+            'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
+            'Reply-To: ' . $reply_to_email
         );
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . $sct_settings['admin_email'] . '>',
-            'Reply-To: ' . $sct_settings['admin_email']
+            'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
+            'Reply-To: ' . $reply_to_email
         );
 
         // Send the confirmation email

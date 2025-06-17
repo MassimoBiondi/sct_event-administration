@@ -299,6 +299,8 @@ class EventAdmin {
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
             'unpublish_date' => !empty($_POST['unpublish_date']) ? sanitize_text_field($_POST['unpublish_date']) : null,
             'pricing_options' => isset($_POST['pricing_options']) ? maybe_serialize($_POST['pricing_options']) : null,
+            'goods_services' => isset($_POST['goods_services']) ? maybe_serialize($_POST['goods_services']) : null,
+            'payment_methods' => isset($_POST['payment_methods']) ? maybe_serialize($_POST['payment_methods']) : null
         );
 
         if (isset($_POST['payment_methods']) && is_array($_POST['payment_methods'])) {
@@ -327,19 +329,19 @@ class EventAdmin {
             '%s', // event_date
             '%s', // event_time
             '%s', // location_name
-            '%s', // description
             '%s', // location_link
+            '%s', // description
             '%d', // guest_capacity
             '%d', // max_guests_per_registration
             '%s', // admin_email
-            '%s', // pricing_options
-            '%s', // goods_services
             '%d', // member_only
             '%d', // by_lottery
             '%s', // custom_email_template
             '%s', // thumbnail_url
             '%s', // publish_date
             '%s', // unpublish_date
+            '%s', // pricing_options
+            '%s', // goods_services
             '%s'  // payment_methods
         );
 
