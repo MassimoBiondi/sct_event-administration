@@ -2,7 +2,7 @@
 /*
 Plugin Name: SCT Event Administration
     Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-    Version: 2.5
+    Version: 2.6
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later

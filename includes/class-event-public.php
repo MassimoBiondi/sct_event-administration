@@ -327,7 +327,11 @@ class EventPublic {
             $this->send_registration_emails($registration_data, $event_data);
 
             wp_send_json_success(array(
-                'message' => 'Thank you for registering! You will receive a confirmation email shortly.'
+                'message' => 'You will receive a confirmation email shortly. Please check your inbox.<br><br>
+                 <span class="uk-text-muted uk-text-small uk-text-italic">
+                 If you do not receive it, please check your spam folder or contact us at<br>
+                 <a href="mailto:' . esc_html($event->admin_email) . '">' . esc_html($event->admin_email) . '</a></span>'
+                
             ));
 
         } catch (Exception $e) {

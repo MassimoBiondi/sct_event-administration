@@ -1037,10 +1037,10 @@ class EventAdmin {
     private function get_default_confirmation_template() {
         return "<div class='header'>
             <h1>Registration Confirmed!</h1>
-            <p>Your spot for <strong>AGM</strong> is secured.</p>
+            <p>Your spot for <strong>{event_name}</strong> is secured.</p>
         </div>
-        <div class='content-section'><strong>Hello Test,</strong>
-            Thank you for registering for <strong>AGM</strong>!
+        <div class='content-section'><strong>Hello {name},</strong>
+            Thank you for registering for <strong>{event_name}</strong>!
             We're excited to see you there and have prepared this confirmation for your records
         </div>
         <div class='content-section'>

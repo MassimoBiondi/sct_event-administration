@@ -40,7 +40,7 @@ jQuery(document).ready(function($) {
             dataType: 'json',
             success: function (response) {
                 if (response.success) {
-                    form.html('<div class="registration-success">' +
+                    form.html('<div class="registration-success uk-text-center">' +
                         '<h3>Thank you for registering!</h3>' +
                         '<p>' + response.data.message + '</p></div>');
                 } else {
