@@ -70,10 +70,28 @@ th.total-pricing-option {
 .change-payment-status,
 .change-payment-status:focus {
     border: none;
-    background: initial !important;
+    /* background-image: initial !important; */
     box-shadow: none !important;
 }
 
+.change-payment-status.status-pending {
+    background-color: initial ;
+    background-image: initial;
+    border: 1px solid #faa05a;
+    border-radius: 5px;
+}
+
+.change-payment-status.status-paid {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' aria-hidden='true'%3E%3Cpolyline fill='none' stroke='%23fff' stroke-width='2' points='4,10 8,15 17,4'%3E%3C/polyline%3E%3C/svg%3E");
+    background-color: #32d296;
+    color: #fff;
+}
+
+.change-payment-status.status-failed {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' aria-hidden='true'%3E%3Cline fill='none' stroke='%23fff' stroke-width='2' x1='4' y1='4' x2='16' y2='16'%3E%3C/line%3E%3Cline fill='none' stroke='%23fff' stroke-width='2' x1='16' y1='4' x2='4' y2='16'%3E%3C/line%3E%3C/svg%3E");
+    background-color: #f0506e;
+    color: #fff;
+}
 .guest-count {
     width: 60px;
 }

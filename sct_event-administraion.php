@@ -2,7 +2,7 @@
 /*
 Plugin Name: SCT Event Administration
     Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-    Version: 2.6
+    Version: 2.7
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -392,9 +392,14 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
         $first_day = date('Y-m-01', strtotime("$year-$month-01"));
         $last_day = date('Y-m-t', strtotime($first_day));
 
-        // Fetch all events for this month
+        // Fetch all events for this month, respecting publish and unpublish dates
         $events = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, event_name, event_date FROM {$wpdb->prefix}sct_events WHERE event_date BETWEEN %s AND %s ORDER BY event_date ASC",
+            "SELECT id, event_name, event_date, publish_date, unpublish_date 
+         FROM {$wpdb->prefix}sct_events 
+         WHERE event_date BETWEEN %s AND %s
+         AND (publish_date IS NULL OR publish_date <= NOW())
+         AND (unpublish_date IS NULL OR unpublish_date > NOW())
+         ORDER BY event_date ASC",
             $first_day, $last_day
         ));
 
@@ -412,137 +417,137 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
 
         // Calendar navigation
         $today_year = (int)date('Y');
-$today_month = (int)date('n');
-$prev_month = $month - 1;
-$prev_year = $year;
-if ($prev_month < 1) {
-    $prev_month = 12;
-    $prev_year--;
-}
-$next_month = $month + 1;
-$next_year = $year;
-if ($next_month > 12) {
-    $next_month = 1;
-    $next_year++;
-}
-$calendar_url = function($m, $y) {
-    return add_query_arg(array('sctcalmonth' => $m, 'sctcalyear' => $y));
-};
+        $today_month = (int)date('n');
+        $prev_month = $month - 1;
+        $prev_year = $year;
+        if ($prev_month < 1) {
+            $prev_month = 12;
+            $prev_year--;
+        }
+        $next_month = $month + 1;
+        $next_year = $year;
+        if ($next_month > 12) {
+            $next_month = 1;
+            $next_year++;
+        }
+        $calendar_url = function($m, $y) {
+            return add_query_arg(array('sctcalmonth' => $m, 'sctcalyear' => $y));
+        };
 
-echo '<div class="sct-events-calendar-widget">';
-echo '<div class="sct-calendar-nav">';
+        echo '<div class="sct-events-calendar-widget">';
+        echo '<div class="sct-calendar-nav">';
 
-// Only show previous month navigation if not before current month/year
-if ($year > $today_year || ($year == $today_year && $month > $today_month)) {
-    echo '<a href="' . esc_url($calendar_url($prev_month, $prev_year)) . '">&laquo;</a> ';
-} else {
-    echo '<span class="sct-calendar-nav-disabled" style="color:#ccc;opacity:0.5;cursor:not-allowed;">&laquo;</span> ';
-}
-
-echo '<span>' . date('F Y', strtotime("$year-$month-01")) . '</span>';
-echo ' <a href="' . esc_url($calendar_url($next_month, $next_year)) . '">&raquo;</a>';
-echo '</div>';
-
-// Build calendar table
-$first_weekday = date('w', strtotime($first_day));
-$days_in_month = date('t', strtotime($first_day));
-$today = date('Y-m-d');
-
-// Get start of week setting (default: 0 = Sunday)
-$start_of_week = get_option('event_admin_settings', [])['start_of_week'] ?? 0;
-
-echo '<table class="sct-calendar-table">';
-echo '<thead><tr>';
-        
-
-// Build days array starting from the selected day, using WP locale and abbreviations
-$days = [];
-for ($i = 0; $i < 7; $i++) {
-    $day_index = ($start_of_week + $i) % 7;
-    // Use WordPress translation and abbreviation for day names
-    $days[] = esc_html( mb_substr( date_i18n('l', strtotime("Sunday +{$day_index} days")), 0, 1 ) );
-}
-
-// Output table header with localized abbreviations
-foreach ($days as $i => $abbr) {
-    // Use full localized day name as title for accessibility
-    $full_day = esc_attr( date_i18n('l', strtotime("Sunday +" . (($start_of_week + $i) % 7) . " days")) );
-    echo '<th title="' . $full_day . '">' . $abbr . '</th>';
-}
-echo '</tr></thead><tbody><tr>';
-
-// Calculate the weekday of the first day of the month, adjusted for start of week
-$first_weekday = (date('w', strtotime($first_day)) - $start_of_week + 7) % 7;
-
-// Empty cells before first day
-for ($i = 0; $i < $first_weekday; $i++) {
-    echo '<td style="border:none;background:transparent;"></td>';
-}
-
-// Days of the month
-$cell = $first_weekday; // Track the cell index for correct row breaks
-$unique_id = uniqid('sctcal_');
-for ($day = 1; $day <= $days_in_month; $day++, $cell++) {
-    $date = date('Y-m-d', strtotime("$year-$month-$day"));
-    echo '<td>';
-    $events_today = !empty($events_by_date[$date]) ? $events_by_date[$date] : [];
-    $event_count = count($events_today);
-
-    if ($event_count === 1) {
-        $event = $events_today[0];
-        $event_url = add_query_arg('id', $event->id, $registration_url);
-        if ($date >= $today) {
-            // Use the day number as the link if only one event and it's in the future
-            echo '<a href="' . esc_url($event_url) . '" uk-tooltip="' . esc_attr($event->event_name) . '">' . $day . '</a>';
+        // Only show previous month navigation if not before current month/year
+        if ($year > $today_year || ($year == $today_year && $month > $today_month)) {
+            echo '<a href="' . esc_url($calendar_url($prev_month, $prev_year)) . '">&laquo;</a> ';
         } else {
-            // Past event, not clickable
-            echo '<span title="' . esc_attr($event->event_name) . '" uk-tooltip="' . esc_attr($event->event_name) . '" >' . $day . '</span>';
+            echo '<span class="sct-calendar-nav-disabled" style="color:#ccc;opacity:0.5;cursor:not-allowed;">&laquo;</span> ';
         }
-    } elseif ($event_count > 1) {
-        // Tooltip with all event names
-        $tooltip = '';
-        foreach ($events_today as $event) {
-            $tooltip .= esc_html($event->event_name) . "<br>";
+
+        echo '<span>' . date('F Y', strtotime("$year-$month-01")) . '</span>';
+        echo ' <a href="' . esc_url($calendar_url($next_month, $next_year)) . '">&raquo;</a>';
+        echo '</div>';
+
+        // Build calendar table
+        $first_weekday = date('w', strtotime($first_day));
+        $days_in_month = date('t', strtotime($first_day));
+        $today = date('Y-m-d');
+
+        // Get start of week setting (default: 0 = Sunday)
+        $start_of_week = get_option('event_admin_settings', [])['start_of_week'] ?? 0;
+
+        echo '<table class="sct-calendar-table">';
+        echo '<thead><tr>';
+                
+
+        // Build days array starting from the selected day, using WP locale and abbreviations
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $day_index = ($start_of_week + $i) % 7;
+            // Use WordPress translation and abbreviation for day names
+            $days[] = esc_html( mb_substr( date_i18n('l', strtotime("Sunday +{$day_index} days")), 0, 1 ) );
         }
-        $popup_id = $unique_id . '_' . $day;
-        // Day number as popup trigger, with tooltip listing all events
-        echo '<a href="#' . esc_attr($popup_id) . '" uk-toggle uk-tooltip="' . esc_attr(trim($tooltip)) . '">' . $day . '</a>';
-        // Popup dialog for event selection
-        echo '<div id="' . esc_attr($popup_id) . '" class="uk-flex-top" uk-modal>
-                <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical" style="min-width:220px;">
-                    <button class="uk-modal-close-default" type="button" uk-close></button>
-                    <h4>' . esc_html(date_i18n('l, F j, Y', strtotime($date))) . '</h4>
-                    <ul class="uk-list">';
-        foreach ($events_today as $event) {
-            $event_url = add_query_arg('id', $event->id, $registration_url);
-            if ($date >= $today) {
-                echo '<li><a href="' . esc_url($event_url) . '" style="text-decoration:none;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</a></li>';
+
+        // Output table header with localized abbreviations
+        foreach ($days as $i => $abbr) {
+            // Use full localized day name as title for accessibility
+            $full_day = esc_attr( date_i18n('l', strtotime("Sunday +" . (($start_of_week + $i) % 7) . " days")) );
+            echo '<th title="' . $full_day . '">' . $abbr . '</th>';
+        }
+        echo '</tr></thead><tbody><tr>';
+
+        // Calculate the weekday of the first day of the month, adjusted for start of week
+        $first_weekday = (date('w', strtotime($first_day)) - $start_of_week + 7) % 7;
+
+        // Empty cells before first day
+        for ($i = 0; $i < $first_weekday; $i++) {
+            echo '<td style="border:none;background:transparent;"></td>';
+        }
+
+        // Days of the month
+        $cell = $first_weekday; // Track the cell index for correct row breaks
+        $unique_id = uniqid('sctcal_');
+        for ($day = 1; $day <= $days_in_month; $day++, $cell++) {
+            $date = date('Y-m-d', strtotime("$year-$month-$day"));
+            echo '<td>';
+            $events_today = !empty($events_by_date[$date]) ? $events_by_date[$date] : [];
+            $event_count = count($events_today);
+
+            if ($event_count === 1) {
+                $event = $events_today[0];
+                $event_url = add_query_arg('id', $event->id, $registration_url);
+                if ($date >= $today) {
+                    // Use the day number as the link if only one event and it's in the future
+                    echo '<a href="' . esc_url($event_url) . '" uk-tooltip="' . esc_attr($event->event_name) . '">' . $day . '</a>';
+                } else {
+                    // Past event, not clickable
+                    echo '<span title="' . esc_attr($event->event_name) . '" uk-tooltip="' . esc_attr($event->event_name) . '" >' . $day . '</span>';
+                }
+            } elseif ($event_count > 1) {
+                // Tooltip with all event names
+                $tooltip = '';
+                foreach ($events_today as $event) {
+                    $tooltip .= esc_html($event->event_name) . "<br>";
+                }
+                $popup_id = $unique_id . '_' . $day;
+                // Day number as popup trigger, with tooltip listing all events
+                echo '<a href="#' . esc_attr($popup_id) . '" uk-toggle uk-tooltip="' . esc_attr(trim($tooltip)) . '">' . $day . '</a>';
+                // Popup dialog for event selection
+                echo '<div id="' . esc_attr($popup_id) . '" class="uk-flex-top" uk-modal>
+                        <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical" style="min-width:220px;">
+                            <button class="uk-modal-close-default" type="button" uk-close></button>
+                            <h4>' . esc_html(date_i18n('l, F j, Y', strtotime($date))) . '</h4>
+                            <ul class="uk-list">';
+                foreach ($events_today as $event) {
+                    $event_url = add_query_arg('id', $event->id, $registration_url);
+                    if ($date >= $today) {
+                        echo '<li><a href="' . esc_url($event_url) . '" style="text-decoration:none;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</a></li>';
+                    } else {
+                        echo '<li><span style="color:#bbb;cursor:not-allowed;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</span></li>';
+                    }
+                }
+                echo '      </ul>
+                        </div>
+                    </div>';
             } else {
-                echo '<li><span style="color:#bbb;cursor:not-allowed;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</span></li>';
+                // No events: just show the day number
+                echo $day;
+            }
+            echo '</td>';
+            // New row after every 7 cells
+            if (($cell + 1) % 7 == 0 && $day != $days_in_month) {
+                echo '</tr><tr>';
             }
         }
-        echo '      </ul>
-                </div>
-            </div>';
-    } else {
-        // No events: just show the day number
-        echo $day;
-    }
-    echo '</td>';
-    // New row after every 7 cells
-    if (($cell + 1) % 7 == 0 && $day != $days_in_month) {
-        echo '</tr><tr>';
-    }
-}
 
-// Empty cells after last day
-if (($cell) % 7 != 0) {
-    for ($i = ($cell) % 7; $i < 7; $i++) {
-        echo '<td style="border:none;background:transparent;"></td>';
-    }
-}
-echo '</tr></tbody></table>';
-echo '</div>'; // .sct-events-calendar-widget
+        // Empty cells after last day
+        if (($cell) % 7 != 0) {
+            for ($i = ($cell) % 7; $i < 7; $i++) {
+                echo '<td style="border:none;background:transparent;"></td>';
+            }
+        }
+        echo '</tr></tbody></table>';
+        echo '</div>'; // .sct-events-calendar-widget
 
         echo $args['after_widget'];
     }

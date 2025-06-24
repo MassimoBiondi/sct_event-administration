@@ -69,183 +69,209 @@
             </div>            
             
             <?php if (!empty($registrations)): ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <?php if (!empty($event->pricing_options)) : ?>
-                                <?php
-                                $pricing_options = maybe_unserialize($event->pricing_options);
-                                foreach ($pricing_options as $option) : ?>
-                                    <th class="collapse column-small center"><?php echo esc_html($option['name']); ?></th>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <?php if (!empty($event->goods_services)) : ?>
-                                <?php
-                                $goods_services_options = maybe_unserialize($event->goods_services);
-                                foreach ($goods_services_options as $service) : ?>
-                                    <th class="collapse column-small center"><?php echo esc_html($service['name']); ?></th>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <th class="collapse column-small center">Total Guests</th>
-                            <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
-                                <th class="collapse column-small center">Total Price</th>
-                                <th class="collapse column-small center">Payment Method</th>
-                                <th class="collapse column-small center">Payment Status</th>
-                            <?php endif; ?>
-                            <th class="right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($registrations as $registration) : 
-                            $guest_details = maybe_unserialize($registration->guest_details);
-                            $goods_services = maybe_unserialize($registration->goods_services);
-                            $total_guests = $registration->guest_count;
-
-                            // Calculate total price
-                            $total_price = 0;
-
-                            // Add pricing options total
-                            if (!empty($event->pricing_options)) {
-                                $pricing_options = maybe_unserialize($event->pricing_options);
-                                foreach ($pricing_options as $index => $option) {
-                                    $guest_count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
-                                    $price = isset($option['price']) ? floatval($option['price']) : 0;
-                                    $total_price += $guest_count * $price;
-                                }
-                            }
-
-                            // Add goods/services total
-                            if (!empty($event->goods_services)) {
-                                $goods_services_options = maybe_unserialize($event->goods_services);
-                                foreach ($goods_services_options as $index => $service) {
-                                    $service_count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
-                                    $price = isset($service['price']) ? floatval($service['price']) : 0;
-                                    $total_price += $service_count * $price;
-                                }
-                            }
+                <div class="uk-overflow-auto">
+                    <table class="wp-list-table widefat fixed striped">
+                        <?php
+                        $pricing_options = !empty($event->pricing_options) ? maybe_unserialize($event->pricing_options) : [];
+                        $goods_services_options = !empty($event->goods_services) ? maybe_unserialize($event->goods_services) : [];
+                        $total_columns = count($pricing_options) + count($goods_services_options);
                         ?>
-                            <tr data-registration-id="<?php echo esc_attr($registration->id); ?>">
-                                <td><?php echo esc_html($registration->name); ?></td>
-                                <td class="collapse"><?php echo esc_html($registration->email); ?></td>
-                                <?php if (!empty($event->pricing_options)) : ?>
-                                    <?php foreach ($pricing_options as $index => $option) : 
-                                        $guest_count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
-                                    ?>
-                                        <td class="collapse column-small center" data-name="<?php echo esc_attr($option['name']); ?>" data-price="<?php echo esc_attr($option['price']); ?>">
 
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <?php if (!empty($pricing_options)) : ?>
+                                    <?php foreach ($pricing_options as $option) : ?>
+                                        <th class="collapse column-small center"
+                                            <?php if ($total_columns > 4): ?>
+                                                uk-tooltip="title: <?php echo esc_attr($option['name']); ?>"
+                                            <?php endif; ?>>
+                                            <?php
+                                            if ($total_columns > 4) {
+                                                echo esc_html(mb_strimwidth($option['name'], 0, 5, '…'));
+                                            } else {
+                                                echo esc_html($option['name']);
+                                            }
+                                            ?>
+                                        </th>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                <?php if (!empty($goods_services_options)) : ?>
+                                    <?php foreach ($goods_services_options as $service) : ?>
+                                        <th class="collapse column-small center"
+                                            <?php if ($total_columns > 4): ?>
+                                                uk-tooltip="title: <?php echo esc_attr($service['name']); ?>"
+                                            <?php endif; ?>>
+                                            <?php
+                                            if ($total_columns > 4) {
+                                                echo esc_html(mb_strimwidth($service['name'], 0, 5, '…'));
+                                            } else {
+                                                echo esc_html($service['name']);
+                                            }
+                                            ?>
+                                        </th>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                <th class="collapse column-small center">Total Guests</th>
+                                <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
+                                    <th class="collapse column-small center">Price</th>
+                                    <th class="collapse column-small center">Method</th>
+                                    <th class="collapse column-small center sort-status">Status</th>
+                                <?php endif; ?>
+                                <th class="right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($registrations as $registration) : 
+                                $guest_details = maybe_unserialize($registration->guest_details);
+                                $goods_services = maybe_unserialize($registration->goods_services);
+                                $total_guests = $registration->guest_count;
+
+                                // Calculate total price
+                                $total_price = 0;
+
+                                // Add pricing options total
+                                if (!empty($event->pricing_options)) {
+                                    $pricing_options = maybe_unserialize($event->pricing_options);
+                                    foreach ($pricing_options as $index => $option) {
+                                        $guest_count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
+                                        $price = isset($option['price']) ? floatval($option['price']) : 0;
+                                        $total_price += $guest_count * $price;
+                                    }
+                                }
+
+                                // Add goods/services total
+                                if (!empty($event->goods_services)) {
+                                    $goods_services_options = maybe_unserialize($event->goods_services);
+                                    foreach ($goods_services_options as $index => $service) {
+                                        $service_count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+                                        $price = isset($service['price']) ? floatval($service['price']) : 0;
+                                        $total_price += $service_count * $price;
+                                    }
+                                }
+                            ?>
+                                <tr data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                    <td><?php echo esc_html($registration->name); ?></td>
+                                    <td class="collapse"><?php echo esc_html($registration->email); ?></td>
+                                    <?php if (!empty($event->pricing_options)) : ?>
+                                        <?php foreach ($pricing_options as $index => $option) : 
+                                            $guest_count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
+                                        ?>
+                                            <td class="collapse column-small center" data-name="<?php echo esc_attr($option['name']); ?>" data-price="<?php echo esc_attr($option['price']); ?>">
+
+                                                <input type="number" 
+                                                    class="pricing-option-guest-count small-text" 
+                                                    data-pricing-index="<?php echo esc_attr($index); ?>" 
+                                                    value="<?php echo esc_attr($guest_count); ?>"
+                                                    data-original="<?php echo esc_attr($guest_count); ?>" 
+                                                    min="0">
+                                            </td>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($event->goods_services)) : ?>
+                                        <?php foreach ($goods_services_options as $index => $service) : 
+                                            $service_count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+                                        ?>
+                                            <td class="collapse column-small center" data-name="<?php echo esc_attr($service['name']); ?>" data-price="<?php echo esc_attr($service['price']); ?>">
+                                                <input type="number" 
+                                                    class="goods-service-count small-text" 
+                                                    data-service-index="<?php echo esc_attr($index); ?>" 
+                                                    value="<?php echo esc_attr($service_count); ?>"
+                                                    data-original="<?php echo esc_attr($service_count); ?>" 
+                                                    min="0">
+                                            </td>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <td class="total-guests collapse column-small center">
+                                        <?php if (empty($event->pricing_options) && empty($event->goods_services)) : ?>
                                             <input type="number" 
-                                                   class="pricing-option-guest-count small-text" 
-                                                   data-pricing-index="<?php echo esc_attr($index); ?>" 
-                                                   value="<?php echo esc_attr($guest_count); ?>"
-                                                   data-original="<?php echo esc_attr($guest_count); ?>" 
-                                                   min="0">
+                                                class="simple-guest-count small-text" 
+                                                value="<?php echo esc_attr($total_guests); ?>"
+                                                data-original="<?php echo esc_attr($total_guests); ?>" 
+                                                min="1">
+                                            <!-- <button class="button update-simple-guest-count" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                                <span class="dashicons dashicons-yes"></span>
+                                            </button> -->
+                                        <?php else : ?>
+                                            <?php echo esc_attr($total_guests); ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
+                                        <td class="total-price collapse column-small center">
+                                            <?php echo esc_html(number_format($total_price, 2)); ?>
                                         </td>
+                                        <td class="collapse column-small center">
+                                            <?php echo esc_html($registration->payment_method); ?>
+                                        </td>
+                                        <td class="collapse column-small center">
+                                            <!-- <?php echo esc_html($registration->payment_status); ?> -->
+                                            <select class="change-payment-status status-<?php echo esc_attr($registration->payment_status); ?>" 
+                                                    data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                                    data-nonce="<?php echo wp_create_nonce('update_payment_status'); ?>">
+                                                <option value="pending" <?php selected($registration->payment_status, 'pending'); ?>>Pending</option>
+                                                <option value="paid" <?php selected($registration->payment_status, 'paid'); ?>>Paid</option>
+                                                <option value="failed" <?php selected($registration->payment_status, 'failed'); ?>>Failed</option>
+                                            </select>
+                                        </td>
+                                    <?php endif; ?>
+
+                                    <td class="right">
+                                        <a class="button view-registration-details"
+                                                href="#registration-details-modal"
+                                                uk-toggle
+                                                data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                                data-nonce="<?php echo wp_create_nonce('view_registration_details'); ?>">
+                                            View
+                                        </a>
+                                        <button class="button update-guest-counts" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                            Update
+                                        </button>
+                                        <button class="button update-simple-guest-count" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
+                                                <span class="dashicons dashicons-yes"></span>
+                                        </button>
+                                        <a class="button send-email" 
+                                                href="#email-modal" uk-toggle
+                                                data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                                data-recipient-email="<?php echo esc_attr($registration->email); ?>" 
+                                                data-event-name="<?php echo esc_attr($event->event_name); ?>">
+                                            Email
+                                        </a>
+                                        <button class="button delete-registration" 
+                                                data-registration-id="<?php echo esc_attr($registration->id); ?>" 
+                                                data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="2">Totals</th>
+                                <?php if (!empty($event->pricing_options)) : ?>
+                                    <?php foreach ($pricing_options as $index => $option) : ?>
+                                        <th class="collapse column-small center total-pricing-option" data-pricing-index="<?php echo esc_attr($index); ?>">0</th>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                                 <?php if (!empty($event->goods_services)) : ?>
-                                    <?php foreach ($goods_services_options as $index => $service) : 
-                                        $service_count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
-                                    ?>
-                                        <td class="collapse column-small center" data-name="<?php echo esc_attr($service['name']); ?>" data-price="<?php echo esc_attr($service['price']); ?>">
-                                            <input type="number" 
-                                                   class="goods-service-count small-text" 
-                                                   data-service-index="<?php echo esc_attr($index); ?>" 
-                                                   value="<?php echo esc_attr($service_count); ?>"
-                                                   data-original="<?php echo esc_attr($service_count); ?>" 
-                                                   min="0">
-                                        </td>
+                                    <?php foreach ($goods_services_options as $index => $service) : ?>
+                                        <th class="collapse column-small center total-goods-service" data-service-index="<?php echo esc_attr($index); ?>">0</th>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
-                                <td class="total-guests collapse column-small center">
-                                    <?php if (empty($event->pricing_options) && empty($event->goods_services)) : ?>
-                                        <input type="number" 
-                                               class="simple-guest-count small-text" 
-                                               value="<?php echo esc_attr($total_guests); ?>"
-                                               data-original="<?php echo esc_attr($total_guests); ?>" 
-                                               min="1">
-                                        <!-- <button class="button update-simple-guest-count" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
-                                            <span class="dashicons dashicons-yes"></span>
-                                        </button> -->
-                                    <?php else : ?>
-                                        <?php echo esc_attr($total_guests); ?>
-                                    <?php endif; ?>
-                                </td>
+                                <th class="collapse column-small center event-total-guests">
+                                    <?php echo esc_html($total_guests); ?>
+                                </th>
                                 <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
-                                    <td class="total-price collapse column-small center">
-                                        <?php echo esc_html(number_format($total_price, 2)); ?>
-                                    </td>
-                                    <td class="collapse column-small center">
-                                        <?php echo esc_html($registration->payment_method); ?>
-                                    </td>
-                                    <td class="collapse column-small center">
-                                        <!-- <?php echo esc_html($registration->payment_status); ?> -->
-                                        <select class="change-payment-status" 
-                                                data-registration-id="<?php echo esc_attr($registration->id); ?>" 
-                                                data-nonce="<?php echo wp_create_nonce('update_payment_status'); ?>">
-                                            <option value="pending" <?php selected($registration->payment_status, 'pending'); ?>>Pending</option>
-                                            <option value="paid" <?php selected($registration->payment_status, 'paid'); ?>>Paid</option>
-                                            <option value="failed" <?php selected($registration->payment_status, 'failed'); ?>>Failed</option>
-                                        </select>
-                                    </td>
+                                    <th class="collapse column-small center event-total-price">0.00</th>
+                                    <th></th>
+                                    <th></th>
                                 <?php endif; ?>
-
-                                <td class="right">
-                                    <a class="button view-registration-details"
-                                            href="#registration-details-modal"
-                                            uk-toggle
-                                            data-registration-id="<?php echo esc_attr($registration->id); ?>" 
-                                            data-nonce="<?php echo wp_create_nonce('view_registration_details'); ?>">
-                                        View
-                                    </a>
-                                    <button class="button update-guest-counts" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
-                                        Update
-                                    </button>
-                                    <button class="button update-simple-guest-count" style="display: none;" data-registration-id="<?php echo esc_attr($registration->id); ?>">
-                                            <span class="dashicons dashicons-yes"></span>
-                                    </button>
-                                    <a class="button send-email" 
-                                            href="#email-modal" uk-toggle
-                                            data-registration-id="<?php echo esc_attr($registration->id); ?>" 
-                                            data-recipient-email="<?php echo esc_attr($registration->email); ?>" 
-                                            data-event-name="<?php echo esc_attr($event->event_name); ?>">
-                                        Email
-                                    </a>
-                                    <button class="button delete-registration" 
-                                            data-registration-id="<?php echo esc_attr($registration->id); ?>" 
-                                            data-nonce="<?php echo wp_create_nonce('delete_registration'); ?>">
-                                        Delete
-                                    </button>
-                                </td>
+                                <th></th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="2">Totals</th>
-                            <?php if (!empty($event->pricing_options)) : ?>
-                                <?php foreach ($pricing_options as $index => $option) : ?>
-                                    <th class="collapse column-small center total-pricing-option" data-pricing-index="<?php echo esc_attr($index); ?>">0</th>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <?php if (!empty($event->goods_services)) : ?>
-                                <?php foreach ($goods_services_options as $index => $service) : ?>
-                                    <th class="collapse column-small center total-goods-service" data-service-index="<?php echo esc_attr($index); ?>">0</th>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <th class="collapse column-small center event-total-guests">
-                                <?php echo esc_html($total_guests); ?>
-                            </th>
-                            <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
-                                <th class="collapse column-small center event-total-price">0.00</th>
-                                <th></th>
-                                <th></th>
-                            <?php endif; ?>
-                            <th></th>
-                        </tr>
-                    </tfoot>
-                </table>
+                        </tfoot>
+                    </table>
+                </div>
             <?php else: ?>
                 <p>No registrations for this event.</p>
             <?php endif; ?>

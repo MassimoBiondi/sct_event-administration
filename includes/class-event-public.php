@@ -565,6 +565,9 @@ class EventPublic {
         $notification_to = !empty($event_data['admin_email']) ? $event_data['admin_email'] : $sct_settings['admin_email'];
 
 
+        $from_email = 'events@swissclubtokyo.com';
+
+
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
@@ -583,6 +586,9 @@ class EventPublic {
             $confirmation_message_html,
             $confirmation_headers
         );
+        error_log('Confirmation email data: ' . $confirmation_to . ' | ' . $confirmation_subject . ' | ' . $confirmation_message_html);
+        error_log('Confirmation email headers: ' . print_r($confirmation_headers, true));
+
         $this->log_email($event_data['id'], 'confirmation', $registration_data['email'], $confirmation_subject, $confirmation_message_html, $confirmation_sent ? 'sent' : 'failed');
 
         // Send the admin notification email

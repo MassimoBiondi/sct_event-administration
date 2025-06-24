@@ -34,56 +34,58 @@
     </div>
 
     <?php if ($event_id && !empty($registrations)) : ?>
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Guest Count</th>
-                    <th>Registration Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($registrations as $registration) : ?>
+        <div class="uk-overflow-auto">
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
                     <tr>
-                        <td><?php echo esc_html($registration->name); ?></td>
-                        <td><?php echo esc_html($registration->email); ?></td>
-                        <td><?php echo esc_html($registration->guest_count); ?></td>
-                        <td><?php echo esc_html(
-                            date('Y-m-d H:i', strtotime($registration->registration_date))
-                        ); ?></td>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Guest Count</th>
+                        <th>Registration Date</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="2">
-                        <strong>Total Registrations:</strong> <?php echo count($registrations); ?>
-                    </td>
-                    <td colspan="1">
-                        <strong>Total Guests:</strong> 
-                        <?php 
-                        echo array_reduce($registrations, function($carry, $item) {
-                            return $carry + $item->guest_count;
-                        }, 0);
-                        ?>
-                    </td>
-                    <td>
-                        <?php if ($event_id && !empty($registrations)) : ?>
-                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline-block; margin-left: 10px;">
-                                <input type="hidden" name="action" value="export_event_registrations" />
-                                <input type="hidden" name="event_id" value="<?php echo esc_attr($event_id); ?>" />
-                                <?php wp_nonce_field('export_event_registrations_' . $event_id); ?>
-                                <button type="submit" class="button button-small">
-                                    <!-- <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span> -->
-                                    Export CSV
-                                </button>
-                            </form>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    <?php foreach ($registrations as $registration) : ?>
+                        <tr>
+                            <td><?php echo esc_html($registration->name); ?></td>
+                            <td><?php echo esc_html($registration->email); ?></td>
+                            <td><?php echo esc_html($registration->guest_count); ?></td>
+                            <td><?php echo esc_html(
+                                date('Y-m-d H:i', strtotime($registration->registration_date))
+                            ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">
+                            <strong>Total Registrations:</strong> <?php echo count($registrations); ?>
+                        </td>
+                        <td colspan="1">
+                            <strong>Total Guests:</strong> 
+                            <?php 
+                            echo array_reduce($registrations, function($carry, $item) {
+                                return $carry + $item->guest_count;
+                            }, 0);
+                            ?>
+                        </td>
+                        <td>
+                            <?php if ($event_id && !empty($registrations)) : ?>
+                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline-block; margin-left: 10px;">
+                                    <input type="hidden" name="action" value="export_event_registrations" />
+                                    <input type="hidden" name="event_id" value="<?php echo esc_attr($event_id); ?>" />
+                                    <?php wp_nonce_field('export_event_registrations_' . $event_id); ?>
+                                    <button type="submit" class="button button-small">
+                                        <!-- <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 5px;"></span> -->
+                                        Export CSV
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     <?php elseif ($event_id) : ?>
         <p>No registrations found for this event.</p>
     <?php else : ?>
