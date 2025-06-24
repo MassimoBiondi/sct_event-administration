@@ -300,41 +300,41 @@ jQuery(document).ready(function($) {
 
 
     // Add click handlers for the placeholder codes
-    $('.qqqplaceholder-info code').each(function() {
-        $(this)
-            .css('cursor', 'pointer')
-            .attr('title', 'Click to insert')
-            .on('click', function() {
-                var placeholder = $(this).text() + ' ';
-                var $emailBody = $('#email_body');
-                var $customEmailTemplate = $('#custom_email_template');
+    // $('.qqqplaceholder-info code').each(function() {
+    //     $(this)
+    //         .css('cursor', 'pointer')
+    //         .attr('title', 'Click to insert')
+    //         .on('click', function() {
+    //             var placeholder = $(this).text() + ' ';
+    //             var $emailBody = $('#email_body');
+    //             var $customEmailTemplate = $('#custom_email_template');
 
-                // Function to insert placeholder at cursor position
-                function insertPlaceholder($textarea) {
-                    var startPos = $textarea[0].selectionStart;
-                    var endPos = $textarea[0].selectionEnd;
-                    var currentContent = $textarea.val();
-                    var newContent = currentContent.substring(0, startPos) +
-                                     placeholder +
-                                     currentContent.substring(endPos);
-                    $textarea.val(newContent);
-                    var newCursorPos = startPos + placeholder.length;
-                    $textarea[0].setSelectionRange(newCursorPos, newCursorPos);
-                    $textarea.focus();
-                }
+    //             // Function to insert placeholder at cursor position
+    //             function insertPlaceholder($textarea) {
+    //                 var startPos = $textarea[0].selectionStart;
+    //                 var endPos = $textarea[0].selectionEnd;
+    //                 var currentContent = $textarea.val();
+    //                 var newContent = currentContent.substring(0, startPos) +
+    //                                  placeholder +
+    //                                  currentContent.substring(endPos);
+    //                 $textarea.val(newContent);
+    //                 var newCursorPos = startPos + placeholder.length;
+    //                 $textarea[0].setSelectionRange(newCursorPos, newCursorPos);
+    //                 $textarea.focus();
+    //             }
 
-                // Insert placeholder into the focused textarea
-                if ($emailBody.is(':focus') || $emailBody.length && !$customEmailTemplate.length) {
-                    insertPlaceholder($emailBody);
-                } else if ($customEmailTemplate.is(':focus') || $customEmailTemplate.length) {
-                    insertPlaceholder($customEmailTemplate);
-                } else if ($emailBody.length) { // Fallback if neither is focused
-                     insertPlaceholder($emailBody);
-                } else if ($customEmailTemplate.length) {
-                     insertPlaceholder($customEmailTemplate);
-                }
-            });
-    });
+    //             // Insert placeholder into the focused textarea
+    //             if ($emailBody.is(':focus') || $emailBody.length && !$customEmailTemplate.length) {
+    //                 insertPlaceholder($emailBody);
+    //             } else if ($customEmailTemplate.is(':focus') || $customEmailTemplate.length) {
+    //                 insertPlaceholder($customEmailTemplate);
+    //             } else if ($emailBody.length) { // Fallback if neither is focused
+    //                  insertPlaceholder($emailBody);
+    //             } else if ($customEmailTemplate.length) {
+    //                  insertPlaceholder($customEmailTemplate);
+    //             }
+    //         });
+    // });
 
     // Add click handlers for the placeholder codes
     $('.placeholder-info code').each(function() {
@@ -1904,25 +1904,25 @@ jQuery(document).ready(function($) {
     });
 
     // Insert placeholder into #email_body when clicked in the email modal
-    $(document).on('click', '#email-modal .placeholder-info code', function() {
-        var placeholder = $(this).text() + ' ';
-        var $emailBody = $('#email-modal #email_body');
+    // $(document).on('click', '#email-modal .placeholder-info code', function() {
+    //     var placeholder = $(this).text() + ' ';
+    //     var $emailBody = $('#email-modal #email_body');
 
-        // Insert at cursor position
-        var textarea = $emailBody[0];
-        if (textarea) {
-            var startPos = textarea.selectionStart;
-            var endPos = textarea.selectionEnd;
-            var currentContent = $emailBody.val();
-            var newContent = currentContent.substring(0, startPos) +
-                             placeholder +
-                             currentContent.substring(endPos);
-            $emailBody.val(newContent);
-            var newCursorPos = startPos + placeholder.length;
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-            $emailBody.focus();
-        }
-    });
+    //     // Insert at cursor position
+    //     var textarea = $emailBody[0];
+    //     if (textarea) {
+    //         var startPos = textarea.selectionStart;
+    //         var endPos = textarea.selectionEnd;
+    //         var currentContent = $emailBody.val();
+    //         var newContent = currentContent.substring(0, startPos) +
+    //                          placeholder +
+    //                          currentContent.substring(endPos);
+    //         $emailBody.val(newContent);
+    //         var newCursorPos = startPos + placeholder.length;
+    //         textarea.setSelectionRange(newCursorPos, newCursorPos);
+    //         $emailBody.focus();
+    //     }
+    // });
 
     // initializeDataTables();
 
@@ -2913,25 +2913,25 @@ jQuery(document).ready(function($) {
     });
 
     // Insert placeholder into #email_body when clicked in the email modal
-    $(document).on('click', '#email-modal .placeholder-info code', function() {
-        var placeholder = $(this).text() + ' ';
-        var $emailBody = $('#email-modal #email_body');
+    // $(document).on('click', '#email-modal .placeholder-info code', function() {
+    //     var placeholder = $(this).text() + ' ';
+    //     var $emailBody = $('#email-modal #email_body');
 
-        // Insert at cursor position
-        var textarea = $emailBody[0];
-        if (textarea) {
-            var startPos = textarea.selectionStart;
-            var endPos = textarea.selectionEnd;
-            var currentContent = $emailBody.val();
-            var newContent = currentContent.substring(0, startPos) +
-                             placeholder +
-                             currentContent.substring(endPos);
-            $emailBody.val(newContent);
-            var newCursorPos = startPos + placeholder.length;
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-            $emailBody.focus();
-        }
-    });
+    //     // Insert at cursor position
+    //     var textarea = $emailBody[0];
+    //     if (textarea) {
+    //         var startPos = textarea.selectionStart;
+    //         var endPos = textarea.selectionEnd;
+    //         var currentContent = $emailBody.val();
+    //         var newContent = currentContent.substring(0, startPos) +
+    //                          placeholder +
+    //                          currentContent.substring(endPos);
+    //         $emailBody.val(newContent);
+    //         var newCursorPos = startPos + placeholder.length;
+    //         textarea.setSelectionRange(newCursorPos, newCursorPos);
+    //         $emailBody.focus();
+    //     }
+    // });
 
     initializeDataTables();
 
