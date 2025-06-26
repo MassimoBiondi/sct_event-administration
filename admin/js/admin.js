@@ -172,14 +172,9 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     showAdminNotice('Event deleted successfully', 'success');
-
-                    if ($.fn.DataTable.isDataTable(button.closest('.wp-list-table'))) {
-                         dtTable.row(button.closest('tr')).remove().draw();
-                    } else {
-                        button.closest('tr').fadeOut(400, function() {
-                            $(this).remove();
-                        });
-                    }
+                    button.closest('tr').fadeOut(400, function() {
+                        $(this).remove();
+                    });
                 } else {
                     showAdminNotice(response.data.message || 'Error deleting event', 'error');
                 }
@@ -377,23 +372,16 @@ jQuery(document).ready(function($) {
                 if (response.success) {
 
                     showAdminNotice('Registration deleted successfully.', 'success');
-
-                     if ($.fn.DataTable.isDataTable(button.closest('.wp-list-table'))) {
-                         dtTable.row(button.closest('tr')).remove().draw();
-                    } else {
-                        button.closest('tr').fadeOut(400, function () {
-                            $(this).remove();
-                        });
-                    }
-
+                    button.closest('tr').fadeOut(400, function () {
+                        $(this).remove();
+                    });
                     calculateTotals(button.closest('.wp-list-table'));
                 } else {
 
                     showAdminNotice(response.data.message || 'Error deleting registration.', 'error');
                 }
             },
-            error: function () {
-
+            error: function (response) {
                 showAdminNotice('Error deleting registration.', 'error');
             }
         });
@@ -1128,7 +1116,7 @@ jQuery(document).ready(function($) {
     function updateRowTotalPrice(row) {
         let totalPrice = 0;
 
-        const currencySymbol = $('#currency-symbol').data('currency-symbol') || '$';
+        const currencySymbol = $('#currency-symbol').data('currency-symbol') || '';
         const currencyFormat = $('#currency-format').data('currency-format') === 0 ? 0 : parseInt($('#currency-format').data('currency-format'), 10) || 2;
 
         row.find('.pricing-option-guest-count').each(function () {
@@ -1909,116 +1897,6 @@ jQuery(document).ready(function($) {
         }
     });
 
-    initializeDataTables();
-
-    function initializeDataTables() {
-        $('.wp-list-table').each(function() {
-            var table = $(this);
-            if (table.length && !$.fn.DataTable.isDataTable(table)) {
-
-                $.fn.dataTable.ext.order['dom-text-numeric'] = function (settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function (td, i) {
-                        var inputVal = $('input', td).val();
-                        return parseFloat(inputVal) || 0; 
-                    });
-                };
-
-                $.fn.dataTable.ext.order['dom-currency'] = function (settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function (td, i) {
-                        var text = $('span.total-price', td).text();
-                        var val = text.replace(new RegExp('\\' + (eventAdmin.currency_symbol || '$'), 'g'), '')
-                                      .replace(new RegExp('\\' + (eventAdmin.thousand_separator || ','), 'g'), '')
-                                      .replace(new RegExp('\\' + (eventAdmin.decimal_separator || '.'), 'g'), '.');
-                        return parseFloat(val) || 0;
-                    });
-                };
-
-                $.fn.dataTable.ext.order['dom-status'] = function(settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function(td, i) {
-
-                        var $select = $('select', td);
-                        var statusText = '';
-                        if ($select.length) {
-                            statusText = $select.val().toLowerCase();
-                        } else {
-                            statusText = $(td).text().trim().toLowerCase();
-                        }
-
-                        if (statusText === 'paid') return 2;
-                        if (statusText === 'pending') return 1;
-                        if (statusText === 'failed') return 0;
-                        return -1;
-                    });
-                };
-
-                var columnDefs = [
-                    { "orderable": false, "targets": 'no-sort' }, 
-                    { "orderDataType": "dom-text-numeric", "targets": 'sort-input-numeric' }, 
-                    { "orderDataType": "dom-currency", "targets": 'sort-currency' }, 
-                    { "orderDataType": "dom-status", "targets": 'sort-status' } 
-                ];
-
-                var dt = table.DataTable({
-                    "order": [], 
-                    "columnDefs": columnDefs,
-                    "lengthMenu": (function() {
-                        var defaultLengths = [10, 25, 50, -1];
-                        var displayLengths = [10, 25, 50, "All"];
-                        var pageLengthSetting = parseInt(eventAdmin.items_per_page, 10);
-
-                        if (pageLengthSetting && !defaultLengths.includes(pageLengthSetting)) {
-
-                            let inserted = false;
-                            for (let i = 0; i < defaultLengths.length -1; i++) { 
-                                if (pageLengthSetting < defaultLengths[i]) {
-                                    defaultLengths.splice(i, 0, pageLengthSetting);
-                                    displayLengths.splice(i, 0, pageLengthSetting);
-                                    inserted = true;
-                                    break;
-                                }
-                            }
-
-                            if (!inserted) {
-                                defaultLengths.splice(defaultLengths.length - 1, 0, pageLengthSetting);
-                                displayLengths.splice(displayLengths.length - 1, 0, pageLengthSetting);
-                            }
-                        }
-                        return [defaultLengths, displayLengths];
-                    })(),
-                    "pageLength": parseInt(eventAdmin.items_per_page, 10) || 10, 
-                    "language": {
-                        "search": "Filter records:", 
-                         "lengthMenu": "Show _MENU_ entries",
-                         "info": "Showing _START_ to _END_ of _TOTAL_ entries",
-                         "infoEmpty": "Showing 0 to 0 of 0 entries",
-                         "infoFiltered": "(filtered from _MAX_ total entries)",
-                         "paginate": {
-                            "first":      "First",
-                            "last":       "Last",
-                            "next":       "Next",
-                            "previous":   "Previous"
-                        },
-                        "zeroRecords": "No matching records found",
-                        "emptyTable": "No data available in table"
-                    },
-                    "initComplete": function() {
-                        var api = this.api();
-
-                        var registrationDateColumnIndex = api.column('th:contains("Registration Date")').index();
-                        if (typeof registrationDateColumnIndex !== 'undefined') {
-                            api.order([registrationDateColumnIndex, 'desc']).draw(); 
-                        }
-
-                        calculateTotals(table);
-                    }
-                });
-
-                dt.on('draw.dt', function() {
-                    calculateTotals(table);
-                });
-            }
-        });
-    }
 
     $('#accordion').accordion({
         collapsible: true,
@@ -2554,116 +2432,6 @@ jQuery(document).ready(function($) {
         }
     });
 
-    initializeDataTables();
-
-    function initializeDataTables() {
-        $('.wp-list-table').each(function() {
-            var table = $(this);
-            if (table.length && !$.fn.DataTable.isDataTable(table)) {
-
-                $.fn.dataTable.ext.order['dom-text-numeric'] = function (settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function (td, i) {
-                        var inputVal = $('input', td).val();
-                        return parseFloat(inputVal) || 0; 
-                    });
-                };
-
-                $.fn.dataTable.ext.order['dom-currency'] = function (settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function (td, i) {
-                        var text = $('span.total-price', td).text();
-                        var val = text.replace(new RegExp('\\' + (eventAdmin.currency_symbol || '$'), 'g'), '')
-                                      .replace(new RegExp('\\' + (eventAdmin.thousand_separator || ','), 'g'), '')
-                                      .replace(new RegExp('\\' + (eventAdmin.decimal_separator || '.'), 'g'), '.');
-                        return parseFloat(val) || 0;
-                    });
-                };
-
-                $.fn.dataTable.ext.order['dom-status'] = function(settings, col) {
-                    return this.api().column(col, { order: 'index' }).nodes().map(function(td, i) {
-
-                        var $select = $('select', td);
-                        var statusText = '';
-                        if ($select.length) {
-                            statusText = $select.val().toLowerCase();
-                        } else {
-                            statusText = $(td).text().trim().toLowerCase();
-                        }
-
-                        if (statusText === 'paid') return 2;
-                        if (statusText === 'pending') return 1;
-                        if (statusText === 'failed') return 0;
-                        return -1;
-                    });
-                };
-
-                var columnDefs = [
-                    { "orderable": false, "targets": 'no-sort' }, 
-                    { "orderDataType": "dom-text-numeric", "targets": 'sort-input-numeric' }, 
-                    { "orderDataType": "dom-currency", "targets": 'sort-currency' }, 
-                    { "orderDataType": "dom-status", "targets": 'sort-status' } 
-                ];
-
-                var dt = table.DataTable({
-                    "order": [], 
-                    "columnDefs": columnDefs,
-                    "lengthMenu": (function() {
-                        var defaultLengths = [10, 25, 50, -1];
-                        var displayLengths = [10, 25, 50, "All"];
-                        var pageLengthSetting = parseInt(eventAdmin.items_per_page, 10);
-
-                        if (pageLengthSetting && !defaultLengths.includes(pageLengthSetting)) {
-
-                            let inserted = false;
-                            for (let i = 0; i < defaultLengths.length -1; i++) { 
-                                if (pageLengthSetting < defaultLengths[i]) {
-                                    defaultLengths.splice(i, 0, pageLengthSetting);
-                                    displayLengths.splice(i, 0, pageLengthSetting);
-                                    inserted = true;
-                                    break;
-                                }
-                            }
-
-                            if (!inserted) {
-                                defaultLengths.splice(defaultLengths.length - 1, 0, pageLengthSetting);
-                                displayLengths.splice(displayLengths.length - 1, 0, pageLengthSetting);
-                            }
-                        }
-                        return [defaultLengths, displayLengths];
-                    })(),
-                    "pageLength": parseInt(eventAdmin.items_per_page, 10) || 10, 
-                    "language": {
-                        "search": "Filter records:", 
-                         "lengthMenu": "Show _MENU_ entries",
-                         "info": "Showing _START_ to _END_ of _TOTAL_ entries",
-                         "infoEmpty": "Showing 0 to 0 of 0 entries",
-                         "infoFiltered": "(filtered from _MAX_ total entries)",
-                         "paginate": {
-                            "first":      "First",
-                            "last":       "Last",
-                            "next":       "Next",
-                            "previous":   "Previous"
-                        },
-                        "zeroRecords": "No matching records found",
-                        "emptyTable": "No data available in table"
-                    },
-                    "initComplete": function() {
-                        var api = this.api();
-
-                        var registrationDateColumnIndex = api.column('th:contains("Registration Date")').index();
-                        if (typeof registrationDateColumnIndex !== 'undefined') {
-                            api.order([registrationDateColumnIndex, 'desc']).draw(); 
-                        }
-
-                        calculateTotals(table);
-                    }
-                });
-
-                dt.on('draw.dt', function() {
-                    calculateTotals(table);
-                });
-            }
-        });
-    }
 
     $('#accordion').accordion({
         collapsible: true,

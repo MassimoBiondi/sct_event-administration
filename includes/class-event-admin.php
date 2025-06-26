@@ -557,12 +557,6 @@ class EventAdmin {
 
         global $wpdb;
 
-        // Delete associated emails first (to maintain referential integrity)
-        $wpdb->delete(
-            $wpdb->prefix . 'sct_event_emails',
-            array('registration_id' => $registration_id),
-            array('%d')
-        );
 
         // Delete the registration
         $result = $wpdb->delete(
@@ -572,7 +566,7 @@ class EventAdmin {
         );
 
         if ($result === false) {
-            wp_send_json_error(array('message' => 'Failed to delete registration'));
+            wp_send_json_error(array('message' => 'Failed to delete registration' . $wpdb->last_error));
             return;
         }
 
@@ -1117,6 +1111,14 @@ class EventAdmin {
         $has_pricing_options = !empty($pricing_options);
         $has_goods_services = !empty($goods_services_options);
 
+        // Get currency settings from sct_settings
+        $sct_settings = get_option('event_admin_settings', array(
+            'currency_symbol' => '',
+            'currency_format' => 2,
+        ));
+        $currency_symbol = isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : '';
+        $currency_format = isset($sct_settings['currency_format']) ? intval($sct_settings['currency_format']) : 2;
+
         $filename = sanitize_title($event->event_name) . '-registrations-' . date('Y-m-d') . '.csv';
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1130,12 +1132,12 @@ class EventAdmin {
         $headers = ['Attendance', 'Name', 'Email', 'Registration Date', 'Total Guests'];
         if ($has_pricing_options) {
             foreach ($pricing_options as $option) {
-                $headers[] = $option['name'] . ' (Count)';
+                $headers[] = $option['name'];
             }
         }
         if ($has_goods_services) {
             foreach ($goods_services_options as $service) {
-                $headers[] = $service['name'] . ' (Count)';
+                $headers[] = $service['name'];
             }
         }
         if ($has_pricing_options || $has_goods_services) {
@@ -1183,7 +1185,7 @@ class EventAdmin {
 
             // Total Price
             if ($has_pricing_options || $has_goods_services) {
-                $row[] = number_format($total_price, 2);
+                $row[] = $currency_symbol . ' ' . number_format($total_price, $currency_format);
             }
 
             // Winner
@@ -1203,12 +1205,12 @@ class EventAdmin {
         $footer = ['Pricing Reference', '', '', '', ''];
         if ($has_pricing_options) {
             foreach ($pricing_options as $option) {
-                $footer[] = isset($option['price']) ? $event->currency_symbol . ' ' . number_format($option['price'], $event->currency_format) : '';
+                $footer[] = isset($option['price']) ? $currency_symbol . ' ' . number_format($option['price'], $currency_format) : '';
             }
         }
         if ($has_goods_services) {
             foreach ($goods_services_options as $service) {
-                $footer[] = isset($service['price']) ? $event->currency_symbol . ' ' . number_format($service['price'], $event->currency_format) : '';
+                $footer[] = isset($service['price']) ? $currency_symbol . ' ' . number_format($service['price'], $currency_format) : '';
             }
         }
         if ($has_pricing_options || $has_goods_services) {
