@@ -311,14 +311,27 @@ table.dataTable thead .sorting {
     color: #23282d;
 }
 
-.column-small {
-    width: 6%;
+.column-small-number {
+    /* width: 6%; */
+    width: 70px !important;
+}
+
+.button.view-registration-details,
+.button.send-email,
+.button.delete-registration {
+    width: 55px;
+}
+
+uk-table .button {
+    width: 100%;
+    cursor: pointer;
 }
 
 button.button.delete-registration,
 button.button.delete-event {
     color: #b32d2e;
     border: none;
+    background-color: transparent;
 }
 
 button.button.update-guest-counts {

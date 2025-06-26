@@ -575,3 +575,11 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
 add_action('widgets_init', function() {
     register_widget('SCT_Events_Calendar_Widget');
 });
+function sct_events_calendar_shortcode($atts) {
+    ob_start();
+    the_widget('SCT_Events_Calendar_Widget');
+    return ob_get_clean();
+}
+add_shortcode('sct_events_calendar', 'sct_events_calendar_shortcode');
+
+add_filter('the_excerpt', 'do_shortcode');

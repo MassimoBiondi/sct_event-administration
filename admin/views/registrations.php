@@ -70,7 +70,7 @@
             
             <?php if (!empty($registrations)): ?>
                 <div class="uk-overflow-auto">
-                    <table class="wp-list-table widefat fixed striped">
+                    <table class="uk-table wp-list-table widefat striped">
                         <?php
                         $pricing_options = !empty($event->pricing_options) ? maybe_unserialize($event->pricing_options) : [];
                         $goods_services_options = !empty($event->goods_services) ? maybe_unserialize($event->goods_services) : [];
@@ -83,13 +83,14 @@
                                 <th>Email</th>
                                 <?php if (!empty($pricing_options)) : ?>
                                     <?php foreach ($pricing_options as $option) : ?>
-                                        <th class="collapse column-small center"
+                                        <th class="collapse column-small-number center"
                                             <?php if ($total_columns > 4): ?>
                                                 uk-tooltip="title: <?php echo esc_attr($option['name']); ?>"
                                             <?php endif; ?>>
                                             <?php
                                             if ($total_columns > 4) {
-                                                echo esc_html(mb_strimwidth($option['name'], 0, 5, '…'));
+                                                echo '<span uk-icon="user"></span>';
+                                                // echo esc_html(mb_strimwidth($option['name'], 0, 5, '…'));
                                             } else {
                                                 echo esc_html($option['name']);
                                             }
@@ -99,13 +100,14 @@
                                 <?php endif; ?>
                                 <?php if (!empty($goods_services_options)) : ?>
                                     <?php foreach ($goods_services_options as $service) : ?>
-                                        <th class="collapse column-small center"
+                                        <th class="collapse column-small-number center"
                                             <?php if ($total_columns > 4): ?>
                                                 uk-tooltip="title: <?php echo esc_attr($service['name']); ?>"
                                             <?php endif; ?>>
                                             <?php
                                             if ($total_columns > 4) {
-                                                echo esc_html(mb_strimwidth($service['name'], 0, 5, '…'));
+                                                echo '<span uk-icon="tag"></span>';
+                                                // echo esc_html(mb_strimwidth($service['name'], 0, 5, '…'));
                                             } else {
                                                 echo esc_html($service['name']);
                                             }
@@ -119,7 +121,7 @@
                                     <th class="collapse column-small center">Method</th>
                                     <th class="collapse column-small center sort-status">Status</th>
                                 <?php endif; ?>
-                                <th class="right">Actions</th>
+                                <th class="right"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -163,7 +165,7 @@
                                                 <input type="number" 
                                                     class="pricing-option-guest-count small-text" 
                                                     data-pricing-index="<?php echo esc_attr($index); ?>" 
-                                                    value="<?php echo esc_attr($guest_count); ?>"
+                                                    value="<?php echo $guest_count == 0 ? '' : esc_attr($guest_count); ?>"
                                                     data-original="<?php echo esc_attr($guest_count); ?>" 
                                                     min="0">
                                             </td>
@@ -177,7 +179,7 @@
                                                 <input type="number" 
                                                     class="goods-service-count small-text" 
                                                     data-service-index="<?php echo esc_attr($index); ?>" 
-                                                    value="<?php echo esc_attr($service_count); ?>"
+                                                    value="<?php echo $service_count == 0 ? '' : esc_attr($service_count); ?>"
                                                     data-original="<?php echo esc_attr($service_count); ?>" 
                                                     min="0">
                                             </td>

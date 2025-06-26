@@ -233,10 +233,10 @@ class EventAdmin {
 
         // Conditionally enqueue DataTables scripts and styles
         $current_screen = get_current_screen();
-        if (in_array($current_screen->id, array('toplevel_page_event-admin', 'events_page_event-registrations', 'events_page_event-past'))) {
-            wp_enqueue_script('datatables-js', 'https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js', array('jquery'), '1.11.5', true);
-            wp_enqueue_style('datatables-css', 'https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css', array(), '1.11.5');
-        }
+        // if (in_array($current_screen->id, array('toplevel_page_event-admin', 'events_page_event-registrations', 'events_page_event-past'))) {
+        //     wp_enqueue_script('datatables-js', 'https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js', array('jquery'), '1.11.5', true);
+        //     wp_enqueue_style('datatables-css', 'https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css', array(), '1.11.5');
+        // }
         wp_enqueue_style('jquery-ui-css', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
 
         wp_enqueue_style('uikit-css', 'https://cdn.jsdelivr.net/npm/uikit@3.16.3/dist/css/uikit.min.css', array(), '3.16.3');
@@ -1098,84 +1098,49 @@ class EventAdmin {
             wp_die('Unauthorized access');
         }
 
-        $event_id = isset($_POST['event_id']) ? intval($_POST['event_id']) : 0;
-
-        if (!$event_id) {
-            wp_die('Invalid event ID');
-        }
-
-        // Verify nonce
-        if (!wp_verify_nonce($_POST['_wpnonce'], 'export_event_registrations_' . $event_id)) {
-            wp_die('Invalid nonce');
-        }
-
         global $wpdb;
 
-        // Get event details
+        $event_id = intval($_POST['event_id']);
         $event = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
             $event_id
         ));
 
-        if (!$event) {
-            wp_die('Event not found');
-        }
-
-        // Get registrations
         $registrations = $wpdb->get_results($wpdb->prepare(
-            "SELECT r.*, 
-                    COUNT(e.id) as email_count,
-                    MAX(e.sent_date) as last_email_sent
-             FROM {$wpdb->prefix}sct_event_registrations r
-             LEFT JOIN {$wpdb->prefix}sct_event_emails e ON r.id = e.registration_id
-             WHERE r.event_id = %d 
-             GROUP BY r.id
-             ORDER BY r.registration_date ASC",
+            "SELECT * FROM {$wpdb->prefix}sct_event_registrations WHERE event_id = %d ORDER BY registration_date ASC",
             $event_id
-        ), ARRAY_A);
+        ));
 
-        // Unserialize pricing options and goods/services
         $pricing_options = !empty($event->pricing_options) ? maybe_unserialize($event->pricing_options) : [];
         $goods_services_options = !empty($event->goods_services) ? maybe_unserialize($event->goods_services) : [];
 
-        // Set headers for CSV download (landscape: more columns, less rows)
+        $has_pricing_options = !empty($pricing_options);
+        $has_goods_services = !empty($goods_services_options);
+
         $filename = sanitize_title($event->event_name) . '-registrations-' . date('Y-m-d') . '.csv';
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Pragma: no-cache');
         header('Expires: 0');
 
-        // Create output stream
         $output = fopen('php://output', 'w');
-
-        // Add UTF-8 BOM for proper Excel handling of special characters
-        fputs($output, "\xEF\xBB\xBF");
+        fputs($output, "\xEF\xBB\xBF"); // UTF-8 BOM
 
         // Build CSV headers
         $headers = ['Attendance', 'Name', 'Email', 'Registration Date', 'Total Guests'];
-
-        $has_pricing_options = !empty($pricing_options);
-        $has_goods_services = !empty($goods_services_options);
-
-        // Only show pricing_options columns if available
         if ($has_pricing_options) {
             foreach ($pricing_options as $option) {
                 $headers[] = $option['name'] . ' (Count)';
             }
         }
-
-        // Only show goods_services columns if available
         if ($has_goods_services) {
             foreach ($goods_services_options as $service) {
                 $headers[] = $service['name'] . ' (Count)';
             }
         }
-
-        // Only add Total Price column if at least one of pricing_options or goods_services is available
         if ($has_pricing_options || $has_goods_services) {
             $headers[] = 'Total Price';
         }
-
         if ($event->by_lottery) {
             $headers[] = 'Winner';
         }
@@ -1184,18 +1149,19 @@ class EventAdmin {
 
         // Add registration data
         foreach ($registrations as $registration) {
-            $row = [
-                '', // Checkbox for attendance
-                $registration['name'],
-                $registration['email'],
-                date('Y-m-d H:i', strtotime($registration['registration_date'])),
-                $registration['guest_count'],
-            ];
+            $row = [];
+            $row[] = ''; // Attendance (not tracked here)
+            $row[] = $registration->name;
+            $row[] = $registration->email;
+            $row[] = $registration->registration_date;
+            $row[] = $registration->guest_count;
+
+            $guest_details = !empty($registration->guest_details) ? maybe_unserialize($registration->guest_details) : [];
+            $goods_services = !empty($registration->goods_services) ? maybe_unserialize($registration->goods_services) : [];
 
             $total_price = 0;
 
-            // Pricing option counts
-            $guest_details = !empty($registration['guest_details']) ? maybe_unserialize($registration['guest_details']) : [];
+            // Pricing options columns
             if ($has_pricing_options) {
                 foreach ($pricing_options as $index => $option) {
                     $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
@@ -1205,8 +1171,7 @@ class EventAdmin {
                 }
             }
 
-            // Goods/services counts
-            $goods_services = !empty($registration['goods_services']) ? maybe_unserialize($registration['goods_services']) : [];
+            // Goods/services columns
             if ($has_goods_services) {
                 foreach ($goods_services_options as $index => $service) {
                     $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
@@ -1216,17 +1181,17 @@ class EventAdmin {
                 }
             }
 
-            // Only add Total Price value if the column exists
+            // Total Price
             if ($has_pricing_options || $has_goods_services) {
                 $row[] = number_format($total_price, 2);
             }
 
-            // Add lottery winner status if applicable
+            // Winner
             if ($event->by_lottery) {
-                $row[] = !empty($registration['is_winner']) ? 'Yes' : 'No';
+                $row[] = !empty($registration->is_winner) ? 'Yes' : 'No';
             }
 
-            $row[] = ''; // Remarks field
+            $row[] = ''; // Remarks
 
             fputcsv($output, $row);
         }
@@ -1236,26 +1201,25 @@ class EventAdmin {
 
         // Add a footer row for pricing references
         $footer = ['Pricing Reference', '', '', '', ''];
-
-        // Pricing options prices
         if ($has_pricing_options) {
             foreach ($pricing_options as $option) {
                 $footer[] = isset($option['price']) ? $event->currency_symbol . ' ' . number_format($option['price'], $event->currency_format) : '';
             }
         }
-
-        // Goods/services prices
         if ($has_goods_services) {
             foreach ($goods_services_options as $service) {
                 $footer[] = isset($service['price']) ? $event->currency_symbol . ' ' . number_format($service['price'], $event->currency_format) : '';
             }
         }
-
-        // Only pad and output footer if at least one of pricing_options or goods_services is available
         if ($has_pricing_options || $has_goods_services) {
-            $footer = array_pad($footer, count($headers), '');
-            fputcsv($output, $footer);
+            $footer[] = '';
         }
+        if ($event->by_lottery) {
+            $footer[] = '';
+        }
+        $footer[] = '';
+        $footer = array_pad($footer, count($headers), '');
+        fputcsv($output, $footer);
 
         fclose($output);
         exit;
@@ -1747,7 +1711,7 @@ class EventAdmin {
 
         <?php if ($has_pricing): ?>
             <h4>Pricing Options</h4>
-            <table class="uk-table">
+            <table class="uk-table uk-table-striped">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -1761,6 +1725,7 @@ class EventAdmin {
                     $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
                     $price = isset($option['price']) ? floatval($option['price']) : 0;
                     $subtotal = $count * $price;
+                    if ($count == 0) continue;
                 ?>
                     <tr>
                         <td><?php echo esc_html($option['name']); ?></td>
@@ -1773,9 +1738,17 @@ class EventAdmin {
             </table>
         <?php endif; ?>
 
-        <?php if ($has_goods): ?>
+        <?php foreach ($goods_services_options as $index => $service) :
+            $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
+            $price = isset($service['price']) ? floatval($service['price']) : 0;
+            $subtotal = $count * $price;
+            $total_count += $count;
+        ?>
+        <?php endforeach; ?>
+
+        <?php if ($total_count > 0): ?>
             <h4>Goods/Services</h4>
-            <table>
+            <table  class="uk-table uk-table-striped">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -1789,6 +1762,7 @@ class EventAdmin {
                     $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
                     $price = isset($service['price']) ? floatval($service['price']) : 0;
                     $subtotal = $count * $price;
+                    if ($count == 0) continue;
                 ?>
                     <tr>
                         <td><?php echo esc_html($service['name']); ?></td>
