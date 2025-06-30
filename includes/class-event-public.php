@@ -567,17 +567,27 @@ class EventPublic {
 
         $from_email = 'events@swissclubtokyo.com';
 
+        // Generate DKIM signature
+        $dkim_header = $this->generate_dkim_signature($confirmation_subject, $from_email, $registration_data['email'], $confirmation_message_html);
 
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
             'Reply-To: ' . $reply_to_email
         );
+        if ($dkim_header) {
+            $confirmation_headers[] = $dkim_header;
+        }
+
+        $notification_dkim_header = $this->generate_dkim_signature($notification_subject, $from_email, $notification_to, $notification_message_html);
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: Event @ ' . get_bloginfo('name') . ' <' . $wp_admin_email . '>'
+            'From: Event @ ' . get_bloginfo('name') . ' <' . $from_email . '>'
         );
+        if ($notification_dkim_header) {
+            $notification_headers[] = $notification_dkim_header;
+        }
 
         // Send the confirmation email
         $confirmation_sent = wp_mail(
@@ -624,6 +634,31 @@ class EventPublic {
             ),
             array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
         );
+    }
+
+    private function generate_dkim_signature($subject, $from_email, $to_email, $body) {
+        $private_key_path = EVENT_ADMIN_PATH . 'admin/keys/dkim_private.key';
+        
+        if (!file_exists($private_key_path)) {
+            return false;
+        }
+        
+        $private_key = file_get_contents($private_key_path);
+        $domain = 'swissclubtokyo.com';
+        $selector = 'wordpress';
+        
+        $body_hash = base64_encode(hash('sha256', str_replace("\r\n", "\n", rtrim($body)) . "\n", true));
+        
+        $dkim_header = "v=1; a=rsa-sha256; c=relaxed/simple; d={$domain}; s={$selector}; t=" . time() . "; h=from:to:subject:date; bh={$body_hash}; b=";
+        
+        $headers_to_sign = "from:{$from_email}\r\nto:{$to_email}\r\nsubject:{$subject}\r\ndate:" . date('r') . "\r\ndkim-signature:" . $dkim_header;
+        
+        if (openssl_sign($headers_to_sign, $signature, $private_key, OPENSSL_ALGO_SHA256)) {
+            $signature_b64 = base64_encode($signature);
+            return "DKIM-Signature: {$dkim_header}{$signature_b64}";
+        }
+        
+        return false;
     }
     
     private function replace_email_placeholders($template, $data) {
