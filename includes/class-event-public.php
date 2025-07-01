@@ -83,12 +83,12 @@ class EventPublic {
             'limit' => null, // Default to null for all events
         ), $atts);
 
-        // Build the query
-        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE event_date >= CURDATE()";
+        // Build the query - only show future events (events that haven't started yet)
+        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE CONCAT(event_date, ' ', event_time) > NOW()";
         
         $query .= " AND (publish_date IS NULL OR publish_date <= NOW())";
         // $query .= " AND (unpublish_date IS NULL OR unpublish_date > NOW())";
-        $query .= " ORDER BY event_date ASC";
+        $query .= " ORDER BY event_date ASC, event_time ASC";
 
         // Add LIMIT clause if limit parameter is set and is a positive number
         if (!is_null($atts['limit']) && is_numeric($atts['limit']) && $atts['limit'] > 0) {
