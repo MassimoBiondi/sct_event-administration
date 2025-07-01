@@ -294,6 +294,7 @@ class EventAdmin {
             'admin_email' => sanitize_email($_POST['admin_email']),
             'member_only' => isset($_POST['member_only']) ? 1 : 0,
             'by_lottery' => isset($_POST['by_lottery']) ? 1 : 0,
+            'has_waiting_list' => isset($_POST['has_waiting_list']) ? 1 : 0,
             'custom_email_template' => isset($_POST['custom_email_template']) ? wp_unslash($_POST['custom_email_template']) : null,
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
@@ -336,6 +337,7 @@ class EventAdmin {
             '%s', // admin_email
             '%d', // member_only
             '%d', // by_lottery
+            '%d', // has_waiting_list
             '%s', // custom_email_template
             '%s', // thumbnail_url
             '%s', // publish_date
@@ -705,6 +707,12 @@ class EventAdmin {
         // Replace placeholders in the email body
         $personalized_body = $this->replace_email_placeholders($body_template, $placeholder_data);
 
+        // Generate DKIM signature and add to headers
+        $dkim_header = $this->generate_dkim_signature($subject, 'events@swissclubtokyo.com', $registration->email, wpautop($personalized_body));
+        if ($dkim_header) {
+            $headers[] = $dkim_header;
+        }
+        
         // Send the email
         $sent = wp_mail(
             $registration->email,
@@ -1276,8 +1284,14 @@ class EventAdmin {
                 throw new Exception('Email template or subject not found');
             }
 
-            // Send the email
+            // Generate DKIM signature and add to headers
             $headers = array('Content-Type: text/plain; charset=UTF-8');
+            $dkim_header = $this->generate_dkim_signature($email_subject, 'events@swissclubtokyo.com', $email, $email_template);
+            if ($dkim_header) {
+                $headers[] = $dkim_header;
+            }
+            
+            // Send the email
             $sent = wp_mail($email, $email_subject, $email_template, $headers);
 
             if (!$sent) {
@@ -1308,6 +1322,31 @@ class EventAdmin {
             array('%s'),
             array('%d', '%s')
         );
+    }
+    
+    private function generate_dkim_signature($subject, $from_email, $to_email, $body) {
+        $private_key_path = EVENT_ADMIN_PATH . 'admin/keys/dkim_private.key';
+        
+        if (!file_exists($private_key_path)) {
+            return false;
+        }
+        
+        $private_key = file_get_contents($private_key_path);
+        $domain = 'swissclubtokyo.com';
+        $selector = 'wordpress';
+        
+        $body_hash = base64_encode(hash('sha256', str_replace("\r\n", "\n", rtrim($body)) . "\n", true));
+        
+        $dkim_header = "v=1; a=rsa-sha256; c=relaxed/simple; d={$domain}; s={$selector}; t=" . time() . "; h=from:to:subject:date; bh={$body_hash}; b=";
+        
+        $headers_to_sign = "from:{$from_email}\r\nto:{$to_email}\r\nsubject:{$subject}\r\ndate:" . date('r') . "\r\ndkim-signature:" . $dkim_header;
+        
+        if (openssl_sign($headers_to_sign, $signature, $private_key, OPENSSL_ALGO_SHA256)) {
+            $signature_b64 = base64_encode($signature);
+            return "DKIM-Signature: {$dkim_header}{$signature_b64}";
+        }
+        
+        return false;
     }
     
   

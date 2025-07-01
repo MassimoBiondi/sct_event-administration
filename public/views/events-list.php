@@ -13,6 +13,10 @@
 
             // Check if the event is unpublished
             $is_unpublished = !empty($event->unpublish_date) && strtotime($event->unpublish_date) <= time();
+            
+            // Check if event is fully booked and has waiting list
+            $is_fully_booked = ($event->guest_capacity > 0 && $remaining_capacity <= 0);
+            $has_waiting_list = !empty($event->has_waiting_list);
         ?>
             <div class="event-item">
                 <h1><?php echo esc_html($event->event_name); ?></h1>
@@ -50,6 +54,15 @@
                                 <span class="event-available-text">Available Spots: <?php echo esc_html($remaining_capacity); ?></span>
                             <?php endif; ?>
                             <a href="<?php echo esc_url($event_registration_url); ?>" class="register-button">Register</a>
+                        </div>
+                    <?php elseif ($is_fully_booked && $has_waiting_list): ?>
+                        <div class="event-waiting-list">
+                            <p>This event is fully booked.</p>
+                            <form method="post" class="waiting-list-form">
+                                <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>" />
+                                <input type="email" name="waiting_list_email" placeholder="Enter your email for waiting list" required />
+                                <button type="submit" name="join_waiting_list" class="waiting-list-button">Join Waiting List</button>
+                            </form>
                         </div>
                     <?php else: ?>
                         <div class="registration-closed">

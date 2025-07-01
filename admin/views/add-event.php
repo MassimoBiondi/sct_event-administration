@@ -246,6 +246,17 @@
                         </td>
                     </tr>
                     <tr>
+                        <th><label for="has_waiting_list">Enable Waiting List</label></th>
+                        <td>
+                            <input type="checkbox" 
+                                   id="has_waiting_list" 
+                                   name="has_waiting_list" 
+                                   value="1"
+                                   <?php echo $event && $event->has_waiting_list ? 'checked' : ''; ?>>
+                                <p class="description">Allow users to join waiting list when event is fully booked</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th><label for="custom_email_template">Custom Email Template</label></th>
                         <td>
                             <?php 

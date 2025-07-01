@@ -77,6 +77,11 @@ class EventPublic {
 
     public function render_events_list($atts) {
         global $wpdb;
+        
+        // Handle waiting list form submission
+        if (isset($_POST['join_waiting_list']) && isset($_POST['event_id']) && isset($_POST['waiting_list_email'])) {
+            $this->process_waiting_list_request();
+        }
 
         // Parse attributes with defaults
         $atts = shortcode_atts(array(
@@ -127,6 +132,59 @@ class EventPublic {
         ob_start();
         include EVENT_ADMIN_PATH . 'public/views/events-list.php';
         return ob_get_clean();
+    }
+    
+    private function process_waiting_list_request() {
+        $event_id = intval($_POST['event_id']);
+        $email = sanitize_email($_POST['waiting_list_email']);
+        
+        if (!$event_id || !$email) {
+            return;
+        }
+        
+        global $wpdb;
+        
+        // Get event details
+        $event = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $event_id
+        ));
+        
+        if (!$event || !$event->has_waiting_list) {
+            return;
+        }
+        
+        // Send waiting list email to admin
+        $this->send_waiting_list_email($event, $email);
+        
+        // Show success message
+        echo '<div class="waiting-list-success"><p>Thank you! You have been added to the waiting list.</p></div>';
+    }
+    
+    private function send_waiting_list_email($event, $user_email) {
+        $sct_settings = get_option('event_admin_settings', array(
+            'admin_email' => get_option('admin_email')
+        ));
+        
+        $admin_email = !empty($event->admin_email) ? $event->admin_email : $sct_settings['admin_email'];
+        
+        $subject = 'Waiting List Request: ' . $event->event_name;
+        $message = "Someone has requested to join the waiting list for a fully booked event.\n\n";
+        $message .= "Event: {$event->event_name}\n";
+        $message .= "Date: {$event->event_date}\n";
+        $message .= "Time: {$event->event_time}\n";
+        $message .= "Email: {$user_email}\n\n";
+        $message .= "Please contact them if a spot becomes available.";
+        
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <events@swissclubtokyo.com>'
+        );
+        
+        wp_mail($admin_email, $subject, $message, $headers);
+        
+        // Log the email
+        $this->log_email($event->id, 'waiting_list', $admin_email, $subject, $message, 'sent');
     }
     
 
