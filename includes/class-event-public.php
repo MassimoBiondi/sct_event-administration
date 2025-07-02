@@ -631,7 +631,7 @@ class EventPublic {
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
-            'Reply-To: ' . $reply_to_email
+            'Reply-To: ' . $from_email
         );
         if ($dkim_header) {
             $confirmation_headers[] = $dkim_header;
