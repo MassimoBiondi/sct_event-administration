@@ -402,7 +402,7 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
 
         // Fetch all events for this month, respecting publish and unpublish dates
         $events = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, event_name, event_date, publish_date, unpublish_date 
+            "SELECT id, event_name, event_date, event_time, publish_date, unpublish_date 
          FROM {$wpdb->prefix}sct_events 
          WHERE event_date BETWEEN %s AND %s
          AND (publish_date IS NULL OR publish_date <= NOW())
@@ -504,7 +504,8 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
             if ($event_count === 1) {
                 $event = $events_today[0];
                 $event_url = add_query_arg('id', $event->id, $registration_url);
-                if ($date >= $today) {
+                $event_datetime = $date . ' ' . ($event->event_time ?? '00:00:00');
+                if (strtotime($event_datetime) >= time()) {
                     // Use the day number as the link if only one event and it's in the future
                     echo '<a href="' . esc_url($event_url) . '" uk-tooltip="' . esc_attr($event->event_name) . '">' . $day . '</a>';
                 } else {
@@ -528,7 +529,8 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
                             <ul class="uk-list">';
                 foreach ($events_today as $event) {
                     $event_url = add_query_arg('id', $event->id, $registration_url);
-                    if ($date >= $today) {
+                    $event_datetime = $date . ' ' . ($event->event_time ?? '00:00:00');
+                    if (strtotime($event_datetime) >= time()) {
                         echo '<li><a href="' . esc_url($event_url) . '" style="text-decoration:none;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</a></li>';
                     } else {
                         echo '<li><span style="color:#bbb;cursor:not-allowed;" uk-tooltip="' . esc_attr($event->event_name) . '">' . esc_html($event->event_name) . '</span></li>';

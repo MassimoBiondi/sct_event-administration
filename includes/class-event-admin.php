@@ -107,9 +107,8 @@ class EventAdmin {
         
         $events = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}sct_events 
-            WHERE DATE(CONCAT(event_date, ' ', event_time)) >= %s
-            ORDER BY event_date ASC, event_time ASC",
-            $current_date
+            WHERE CONCAT(event_date, ' ', event_time) >= NOW()
+            ORDER BY event_date ASC, event_time ASC"
         ));
         
         include EVENT_ADMIN_PATH . 'admin/views/events-list.php';
@@ -941,8 +940,8 @@ class EventAdmin {
         $current_date = current_time('Y-m-d');
         
         $where_clause = ($type === 'upcoming') 
-            ? "WHERE DATE(CONCAT(event_date, ' ', event_time)) >= %s"
-            : "WHERE DATE(CONCAT(event_date, ' ', event_time)) < %s";
+            ? "WHERE CONCAT(event_date, ' ', event_time) >= NOW()"
+            : "WHERE CONCAT(event_date, ' ', event_time) < NOW()";
             
         $where_clause = ($event_id !== null)
             ? $where_clause . " AND id = ".$event_id
@@ -951,12 +950,9 @@ class EventAdmin {
         // $where_clause .= " AND (publish_date IS NULL OR publish_date <= NOW())";
         // $where_clause .= " AND (unpublish_date IS NULL OR unpublish_date > NOW())";
 
-        $sql = $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}sct_events 
+        $sql = "SELECT * FROM {$wpdb->prefix}sct_events 
             {$where_clause}
-            ORDER BY event_date $order, event_time $order",
-            $current_date
-        );
+            ORDER BY event_date $order, event_time $order";
         
         return $wpdb->get_results($sql);
     }

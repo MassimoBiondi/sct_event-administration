@@ -9,6 +9,8 @@ class EventPublic {
         // Add AJAX handlers for both logged in and non-logged in users
         add_action('wp_ajax_register_event', array($this, 'process_registration'));
         add_action('wp_ajax_nopriv_register_event', array($this, 'process_registration'));
+        add_action('wp_ajax_join_waiting_list', array($this, 'process_waiting_list_ajax'));
+        add_action('wp_ajax_nopriv_join_waiting_list', array($this, 'process_waiting_list_ajax'));
 
         // add_action('wp_enqueue_scripts', array($this, 'enqueue_public_scripts'));
         add_action('wp_ajax_delete_reservation', array($this, 'delete_reservation'));
@@ -77,11 +79,6 @@ class EventPublic {
 
     public function render_events_list($atts) {
         global $wpdb;
-        
-        // Handle waiting list form submission
-        if (isset($_POST['join_waiting_list']) && isset($_POST['event_id']) && isset($_POST['waiting_list_email'])) {
-            $this->process_waiting_list_request();
-        }
 
         // Parse attributes with defaults
         $atts = shortcode_atts(array(
@@ -89,7 +86,7 @@ class EventPublic {
         ), $atts);
 
         // Build the query - only show future events (events that haven't started yet)
-        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE CONCAT(event_date, ' ', event_time) > NOW()";
+        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE CONCAT(event_date, ' ', event_time) >= NOW()";
         
         $query .= " AND (publish_date IS NULL OR publish_date <= NOW())";
         // $query .= " AND (unpublish_date IS NULL OR unpublish_date > NOW())";
@@ -134,11 +131,13 @@ class EventPublic {
         return ob_get_clean();
     }
     
-    private function process_waiting_list_request() {
+    public function process_waiting_list_ajax() {
         $event_id = intval($_POST['event_id']);
         $email = sanitize_email($_POST['waiting_list_email']);
+        $comment = isset($_POST['waiting_list_comment']) ? sanitize_textarea_field($_POST['waiting_list_comment']) : '';
         
         if (!$event_id || !$email) {
+            wp_send_json_error(array('message' => 'Missing required fields.'));
             return;
         }
         
@@ -151,17 +150,17 @@ class EventPublic {
         ));
         
         if (!$event || !$event->has_waiting_list) {
+            wp_send_json_error(array('message' => 'Invalid event or waiting list not available.'));
             return;
         }
         
         // Send waiting list email to admin
-        $this->send_waiting_list_email($event, $email);
+        $this->send_waiting_list_email($event, $email, $comment);
         
-        // Show success message
-        echo '<div class="waiting-list-success"><p>Thank you! You have been added to the waiting list.</p></div>';
+        wp_send_json_success(array('message' => 'Thank you! You have been added to the waiting list.'));
     }
     
-    private function send_waiting_list_email($event, $user_email) {
+    private function send_waiting_list_email($event, $user_email, $comment = '') {
         $sct_settings = get_option('event_admin_settings', array(
             'admin_email' => get_option('admin_email')
         ));
@@ -173,8 +172,11 @@ class EventPublic {
         $message .= "Event: {$event->event_name}\n";
         $message .= "Date: {$event->event_date}\n";
         $message .= "Time: {$event->event_time}\n";
-        $message .= "Email: {$user_email}\n\n";
-        $message .= "Please contact them if a spot becomes available.";
+        $message .= "Email: {$user_email}\n";
+        if (!empty($comment)) {
+            $message .= "Comment: {$comment}\n";
+        }
+        $message .= "\nPlease contact them if a spot becomes available.";
         
         $headers = array(
             'Content-Type: text/plain; charset=UTF-8',
@@ -206,6 +208,12 @@ class EventPublic {
     
         if (!$event) {
             return 'Event not found.';
+        }
+        
+        // Check if event has already started
+        $event_datetime = $event->event_date . ' ' . $event->event_time;
+        if (strtotime($event_datetime) < time()) {
+            return '<div class="event-past"><h2>' . esc_html($event->event_name) . '</h2><p>This event has already started and registration is no longer available.</p></div>';
         }
     
         // Get current registration count
@@ -631,7 +639,8 @@ class EventPublic {
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
-            'Reply-To: ' . $from_email
+            'Reply-To: ' . $from_email,
+            'Return-Path: events@swissclubtokyo.com'
         );
         if ($dkim_header) {
             $confirmation_headers[] = $dkim_header;
@@ -641,7 +650,8 @@ class EventPublic {
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'From: Event @ ' . get_bloginfo('name') . ' <' . $from_email . '>'
+            'From: Event @ ' . get_bloginfo('name') . ' <' . $from_email . '>',
+            'Return-Path: events@swissclubtokyo.com'
         );
         if ($notification_dkim_header) {
             $notification_headers[] = $notification_dkim_header;

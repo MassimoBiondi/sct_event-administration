@@ -199,6 +199,28 @@
                 </div>
             </form>
         </div>
+    <?php elseif ($event->has_waiting_list): ?>
+        <div class="event-waiting-list">
+            <p>Sorry, this event is fully booked.</p>
+            <form method="post" class="waiting-list-form">
+                <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>" />
+                <div class="uk-margin">
+                    <label for="waiting_list_email">Email:</label>
+                    <div class="uk-form-controls">
+                        <input type="email" id="waiting_list_email" name="waiting_list_email" placeholder="Enter your email for waiting list" required />
+                    </div>
+                </div>
+                <div class="uk-margin">
+                    <label for="waiting_list_comment">Comment (optional):</label>
+                    <div class="uk-form-controls">
+                        <textarea id="waiting_list_comment" name="waiting_list_comment" placeholder="Optional comment" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="uk-margin">
+                    <button type="submit" name="join_waiting_list" class="submit-button">Join Waiting List</button>
+                </div>
+            </form>
+        </div>
     <?php else: ?>
         <div class="registration-closed">
             <p>Sorry, this event is fully booked.</p>

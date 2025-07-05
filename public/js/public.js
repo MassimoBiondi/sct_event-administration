@@ -208,6 +208,44 @@ jQuery(document).ready(function($) {
 
     // Initialize the pricing overview on page load
     updatePricingOverview();
+
+    // Handle waiting list form submission
+    $('.waiting-list-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const eventId = form.data('event-id');
+        const email = form.find('input[name="waiting_list_email"]').val();
+        const comment = form.find('textarea[name="waiting_list_comment"]').val();
+        const messageContainer = $('#waiting-list-message-' + eventId);
+        const submitButton = form.find('button[type="submit"]');
+        
+        submitButton.prop('disabled', true).text('Submitting...');
+        
+        $.ajax({
+            url: eventPublic.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'join_waiting_list',
+                event_id: eventId,
+                waiting_list_email: email,
+                waiting_list_comment: comment
+            },
+            success: function(response) {
+                if (response.success) {
+                    messageContainer.html('<div class="uk-alert-success" uk-alert><p>' + response.data.message + '</p></div>').show();
+                    form.hide();
+                } else {
+                    messageContainer.html('<div class="uk-alert-danger" uk-alert><p>' + response.data.message + '</p></div>').show();
+                    submitButton.prop('disabled', false).text('Join Waiting List');
+                }
+            },
+            error: function() {
+                messageContainer.html('<div class="uk-alert-danger" uk-alert><p>Error submitting request. Please try again.</p></div>').show();
+                submitButton.prop('disabled', false).text('Join Waiting List');
+            }
+        });
+    });
 });
 
 
