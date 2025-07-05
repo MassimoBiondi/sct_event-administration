@@ -210,10 +210,17 @@ button:hover {
 }
 
 .event-waiting-list {
+    /* width: 50%; */
     background: #fff3cd;
     color: #856404;
     padding: 15px;
     border-radius: 4px;
+    text-align: left;
+}
+
+.event-waiting-list h3 {
+    color: red;
+    font-weight: bold;
     text-align: center;
 }
 
@@ -226,7 +233,11 @@ button:hover {
     border: 1px solid #ddd;
     border-radius: 4px;
     margin-right: 10px;
-    width: 200px;
+    /* width: 200px; */
+}
+
+.waiting-list-form input[type="number"] {
+    width: 60px;
 }
 
 .waiting-list-success {

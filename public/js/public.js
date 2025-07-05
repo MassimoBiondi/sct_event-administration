@@ -215,7 +215,9 @@ jQuery(document).ready(function($) {
         
         const form = $(this);
         const eventId = form.data('event-id');
+        const name = form.find('input[name="waiting_list_name"]').val();
         const email = form.find('input[name="waiting_list_email"]').val();
+        const people = form.find('input[name="waiting_list_people"]').val();
         const comment = form.find('textarea[name="waiting_list_comment"]').val();
         const messageContainer = $('#waiting-list-message-' + eventId);
         const submitButton = form.find('button[type="submit"]');
@@ -228,7 +230,9 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'join_waiting_list',
                 event_id: eventId,
+                waiting_list_name: name,
                 waiting_list_email: email,
+                waiting_list_people: people,
                 waiting_list_comment: comment
             },
             success: function(response) {

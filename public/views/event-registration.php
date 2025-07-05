@@ -201,23 +201,28 @@
         </div>
     <?php elseif ($event->has_waiting_list): ?>
         <div class="event-waiting-list">
-            <p>Sorry, this event is fully booked.</p>
-            <form method="post" class="waiting-list-form">
-                <input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>" />
+            <h3>This event is fully booked</h3>
+            <p>However, you can join the waiting list to be notified if a spot opens up.</p>
+            <div id="waiting-list-message-<?php echo $event->id; ?>" style="display:none;"></div>
+            <form class="waiting-list-form uk-form-stacked" data-event-id="<?php echo esc_attr($event->id); ?>">
                 <div class="uk-margin">
-                    <label for="waiting_list_email">Email:</label>
-                    <div class="uk-form-controls">
-                        <input type="email" id="waiting_list_email" name="waiting_list_email" placeholder="Enter your email for waiting list" required />
-                    </div>
+                    <label class="uk-form-label" for="waiting_list_name_<?php echo $event->id; ?>">Name:</label>
+                    <input type="text" id="waiting_list_name_<?php echo $event->id; ?>" name="waiting_list_name" class="uk-input" placeholder="Your name" required />
                 </div>
                 <div class="uk-margin">
-                    <label for="waiting_list_comment">Comment (optional):</label>
-                    <div class="uk-form-controls">
-                        <textarea id="waiting_list_comment" name="waiting_list_comment" placeholder="Optional comment" rows="3"></textarea>
-                    </div>
+                    <label class="uk-form-label" for="waiting_list_email_<?php echo $event->id; ?>">Email:</label>
+                    <input type="email" id="waiting_list_email_<?php echo $event->id; ?>" name="waiting_list_email" class="uk-input" placeholder="Your email" required />
                 </div>
                 <div class="uk-margin">
-                    <button type="submit" name="join_waiting_list" class="submit-button">Join Waiting List</button>
+                    <label class="uk-form-label" for="waiting_list_people_<?php echo $event->id; ?>">Number of People:</label>
+                    <input type="number" id="waiting_list_people_<?php echo $event->id; ?>" name="waiting_list_people" class="uk-input" min="1" value="1" required />
+                </div>
+                <div class="uk-margin">
+                    <!-- <label class="uk-form-label" for="waiting_list_comment_<?php echo $event->id; ?>">Comment (optional):</label> -->
+                    <textarea id="waiting_list_comment_<?php echo $event->id; ?>" name="waiting_list_comment" class="uk-textarea" placeholder="Optional comment" rows="3"></textarea>
+                </div>
+                <div class="uk-margin">
+                    <button type="submit" class="uk-button uk-button-primary uk-width-1-1">Join Waiting List</button>
                 </div>
             </form>
         </div>

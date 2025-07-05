@@ -133,10 +133,12 @@ class EventPublic {
     
     public function process_waiting_list_ajax() {
         $event_id = intval($_POST['event_id']);
+        $name = isset($_POST['waiting_list_name']) ? sanitize_text_field($_POST['waiting_list_name']) : '';
         $email = sanitize_email($_POST['waiting_list_email']);
+        $people = isset($_POST['waiting_list_people']) ? intval($_POST['waiting_list_people']) : 1;
         $comment = isset($_POST['waiting_list_comment']) ? sanitize_textarea_field($_POST['waiting_list_comment']) : '';
         
-        if (!$event_id || !$email) {
+        if (!$event_id || !$name || !$email || $people < 1) {
             wp_send_json_error(array('message' => 'Missing required fields.'));
             return;
         }
@@ -154,39 +156,56 @@ class EventPublic {
             return;
         }
         
-        // Send waiting list email to admin
-        $this->send_waiting_list_email($event, $email, $comment);
+        // Send waiting list emails
+        $this->send_waiting_list_emails($event, $name, $email, $people, $comment);
         
         wp_send_json_success(array('message' => 'Thank you! You have been added to the waiting list.'));
     }
     
-    private function send_waiting_list_email($event, $user_email, $comment = '') {
+    private function send_waiting_list_emails($event, $user_name, $user_email, $people_count, $comment = '') {
         $sct_settings = get_option('event_admin_settings', array(
             'admin_email' => get_option('admin_email')
         ));
         
         $admin_email = !empty($event->admin_email) ? $event->admin_email : $sct_settings['admin_email'];
         
-        $subject = 'Waiting List Request: ' . $event->event_name;
-        $message = "Someone has requested to join the waiting list for a fully booked event.\n\n";
-        $message .= "Event: {$event->event_name}\n";
-        $message .= "Date: {$event->event_date}\n";
-        $message .= "Time: {$event->event_time}\n";
-        $message .= "Email: {$user_email}\n";
-        if (!empty($comment)) {
-            $message .= "Comment: {$comment}\n";
-        }
-        $message .= "\nPlease contact them if a spot becomes available.";
-        
         $headers = array(
             'Content-Type: text/plain; charset=UTF-8',
             'From: ' . get_bloginfo('name') . ' <events@swissclubtokyo.com>'
         );
         
-        wp_mail($admin_email, $subject, $message, $headers);
+        // Send admin notification
+        $admin_subject = 'Waiting List Request: ' . $event->event_name;
+        $admin_message = "Someone has requested to join the waiting list for a fully booked event.\n\n";
+        $admin_message .= "Event: {$event->event_name}\n";
+        $admin_message .= "Date: {$event->event_date}\n";
+        $admin_message .= "Time: {$event->event_time}\n";
+        $admin_message .= "Name: {$user_name}\n";
+        $admin_message .= "Email: {$user_email}\n";
+        $admin_message .= "Number of People: {$people_count}\n";
+        if (!empty($comment)) {
+            $admin_message .= "Comment: {$comment}\n";
+        }
+        $admin_message .= "\nPlease contact them if a spot becomes available.";
         
-        // Log the email
-        $this->log_email($event->id, 'waiting_list', $admin_email, $subject, $message, 'sent');
+        wp_mail($admin_email, $admin_subject, $admin_message, $headers);
+        $this->log_email($event->id, 'waiting_list', $admin_email, $admin_subject, $admin_message, 'sent');
+        
+        // Send confirmation to applicant
+        $user_subject = 'Waiting List Confirmation: ' . $event->event_name;
+        $user_message = "Dear {$user_name},\n\n";
+        $user_message .= "Thank you for joining the waiting list for {$event->event_name}.\n\n";
+        $user_message .= "Event Details:\n";
+        $user_message .= "Date: {$event->event_date}\n";
+        $user_message .= "Time: {$event->event_time}\n";
+        $user_message .= "Location: {$event->location_name}\n";
+        $user_message .= "Number of People: {$people_count}\n\n";
+        $user_message .= "We will contact you if a spot becomes available.\n\n";
+        $user_message .= "Best regards,\n";
+        $user_message .= "The Event Team";
+        
+        wp_mail($user_email, $user_subject, $user_message, $headers);
+        $this->log_email($event->id, 'waiting_list_confirmation', $user_email, $user_subject, $user_message, 'sent');
     }
     
 
