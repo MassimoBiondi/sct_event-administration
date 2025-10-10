@@ -19,6 +19,7 @@ class EventAdmin {
         add_action('wp_ajax_update_registration_guest_count', array($this, 'update_registration_guest_count'));
         add_action('wp_ajax_update_payment_status', array($this, 'update_payment_status'));
         add_action('wp_ajax_view_registration_details', array($this, 'view_registration_details'));
+        add_action('wp_ajax_check_github_updates', array($this, 'check_github_updates'));
     }
 
     public function add_admin_menu() {
@@ -1036,7 +1037,8 @@ class EventAdmin {
             'notification_template' => wp_kses_post($_POST['notification_template']),
             'confirmation_subject' => sanitize_text_field($_POST['confirmation_subject']),
             'confirmation_template' => wp_kses_post(stripslashes($_POST['confirmation_template'])),
-            'start_of_week' => intval($_POST['start_of_week'])
+            'start_of_week' => intval($_POST['start_of_week']),
+            'github_access_token' => isset($_POST['github_access_token']) ? sanitize_text_field($_POST['github_access_token']) : ''
         );
     
         update_option('event_admin_settings', $sct_settings);
@@ -1770,6 +1772,54 @@ class EventAdmin {
 
         // Return the HTML content
         wp_send_json_success(array('html' => $html));
+    }
+
+    public function check_github_updates() {
+        // Verify nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'save_sct_settings')) {
+            wp_send_json_error(array('message' => 'Security check failed.'));
+            return;
+        }
+
+        // Check user permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Unauthorized.'));
+            return;
+        }
+
+        // Get GitHub access token from settings
+        $sct_settings = get_option('event_admin_settings', []);
+        $access_token = isset($sct_settings['github_access_token']) ? $sct_settings['github_access_token'] : '';
+
+        // Initialize GitHub updater and force check
+        if (class_exists('SCT_GitHub_Updater')) {
+            $updater = new SCT_GitHub_Updater(__FILE__, 'MassimoBiondi', 'sct_event-administration', $access_token);
+            $repository_data = $updater->force_check();
+
+            if ($repository_data) {
+                $current_version = EVENT_ADMIN_VERSION;
+                $remote_version = ltrim($repository_data['tag_name'], 'v');
+                
+                if (version_compare($current_version, $remote_version, '<')) {
+                    wp_send_json_success(array(
+                        'has_update' => true,
+                        'current_version' => $current_version,
+                        'latest_version' => $remote_version,
+                        'download_url' => $repository_data['zipball_url']
+                    ));
+                } else {
+                    wp_send_json_success(array(
+                        'has_update' => false,
+                        'current_version' => $current_version,
+                        'latest_version' => $remote_version
+                    ));
+                }
+            } else {
+                wp_send_json_error(array('message' => 'Unable to connect to GitHub repository or repository not found.'));
+            }
+        } else {
+            wp_send_json_error(array('message' => 'GitHub updater not available.'));
+        }
     }
 } // End Class
 

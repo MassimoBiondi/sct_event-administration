@@ -1,8 +1,17 @@
 <div class="wrap">
     <h1>Event Administration Settings</h1>
-    <h2 class="nav-tab-wrapper">
+    <h2 class="nav                            $days_of_week = array(
+                                0 => 'Sunday',
+                                1 => 'Monday',
+                                2 => 'Tuesday',
+                                3 => 'Wednesday',
+                                4 => 'Thursday',
+                                5 => 'Friday',
+                                6 => 'Saturday',
+                            );per">
         <a href="#general-settings" class="nav-tab nav-tab-active">General Settings</a>
         <a href="#email-settings" class="nav-tab">Email Settings</a>
+        <a href="#updates-settings" class="nav-tab">Updates</a>
         <a href="#custom-tables" class="nav-tab">Custom Tables</a>
     </h2>
 
@@ -73,7 +82,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="start_of_week"><?php _e('Start of the week', 'sct-event-administration'); ?></label></th>
+                    <th scope="row"><label for="start_of_week">Start of the week</label></th>
                     <td>
                         <select name="start_of_week" id="start_of_week">
                             <?php
@@ -92,7 +101,7 @@
                             }
                             ?>
                         </select>
-                        <p class="description"><?php _e('Choose which day the calendar week should start on.', 'sct-event-administration'); ?></p>
+                        <p class="description">Choose which day the calendar week should start on.</p>
                     </td>
                 </tr>
             </table>
@@ -125,11 +134,11 @@
                         
                         <div class="postbox">
                             <div class="postbox-header">
-                                <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                                <h2 class="hndle"><?php echo "Available Variables"; ?></h2>
                             </div>
                             <div class="inside">
                                 <div class="placeholder-category">
-                                    <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                    <h4><?php echo "Registration Data"; ?></h4>
                                     <div class="placeholder-list">
                                         <code class="variable-code">{{registration.name}}</code>
                                         <code class="variable-code">{{registration.email}}</code>
@@ -139,7 +148,7 @@
                                 </div>
                                 
                                 <div class="placeholder-category">
-                                    <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                    <h4><?php echo "Event Information"; ?></h4>
                                     <div class="placeholder-list">
                                         <code class="variable-code">{{event.name}}</code>
                                         <code class="variable-code">{{event.date}}</code>
@@ -149,7 +158,7 @@
                                 </div>
                                 
                                 <p class="description">
-                                    <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                    <em><?php echo "Note: Old format like {name} still works for backward compatibility"; ?></em>
                                 </p>
                             </div>
                         </div>
@@ -194,11 +203,11 @@
                             <!-- Available Variables Postbox -->
                             <div class="postbox">
                                 <div class="postbox-header">
-                                    <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                                    <h2 class="hndle"><?php echo "Available Variables"; ?></h2>
                                 </div>
                                 <div class="inside">
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                        <h4><?php echo "Registration Data"; ?></h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{registration.name}}</code>
                                             <code class="variable-code">{{registration.email}}</code>
@@ -210,7 +219,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                        <h4><?php echo "Event Information"; ?></h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{event.name}}</code>
                                             <code class="variable-code">{{event.date}}</code>
@@ -222,7 +231,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Capacity & Payment', 'sct-events'); ?></h4>
+                                        <h4><?php echo "Capacity & Payment"; ?></h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{capacity.total}}</code>
                                             <code class="variable-code">{{capacity.remaining}}</code>
@@ -235,7 +244,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Website Information', 'sct-events'); ?></h4>
+                                        <h4><?php echo "Website Information"; ?></h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{website.name}}</code>
                                             <code class="variable-code">{{website.url}}</code>
@@ -245,11 +254,58 @@
                                     </div>
                                     
                                     <p class="description">
-                                        <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                        <em><?php echo "Note: Old format like {name} still works for backward compatibility"; ?></em>
                                     </p>
                                 </div>
                             </div>
                         </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div id="updates-settings" class="tab-content" style="display: none;">
+            <h2>Plugin Updates</h2>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label>Current Version</label>
+                    </th>
+                    <td>
+                        <strong><?php echo EVENT_ADMIN_VERSION; ?></strong>
+                        <p class="description">Currently installed plugin version.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label>Update Source</label>
+                    </th>
+                    <td>
+                        <p><strong>GitHub Repository:</strong> <a href="https://github.com/MassimoBiondi/sct_event-administration" target="_blank">MassimoBiondi/sct_event-administration</a></p>
+                        <p class="description">Plugin updates are automatically checked from the GitHub repository. Updates appear in the WordPress admin dashboard under Plugins.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label>Manual Update Check</label>
+                    </th>
+                    <td>
+                        <button type="button" id="check-github-updates" class="button button-secondary">Check for Updates Now</button>
+                        <div id="update-check-result" style="margin-top: 10px;"></div>
+                        <p class="description">Manually check for plugin updates from GitHub.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="github_access_token">GitHub Access Token (Optional)</label>
+                    </th>
+                    <td>
+                        <input type="password" 
+                               id="github_access_token" 
+                               name="github_access_token" 
+                               value="<?php echo esc_attr($sct_settings['github_access_token'] ?? ''); ?>" 
+                               class="regular-text">
+                        <p class="description">Optional: Provide a GitHub personal access token to avoid API rate limits. <a href="https://github.com/settings/tokens" target="_blank">Generate one here</a>.</p>
                     </td>
                 </tr>
             </table>
@@ -318,6 +374,42 @@ jQuery(document).ready(function($) {
         }
     }).fail(function() {
         console.error('Failed to load currency codes.');
+    });
+
+    // Manual GitHub Update Check
+    $('#check-github-updates').on('click', function() {
+        var button = $(this);
+        var resultDiv = $('#update-check-result');
+        
+        button.prop('disabled', true).text('Checking...');
+        resultDiv.html('<p style="color: #666;">Checking for updates...</p>');
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'check_github_updates',
+                security: eventAdmin.settings_nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.has_update) {
+                        resultDiv.html('<div class="notice notice-warning inline"><p><strong>Update Available!</strong> Version ' + response.data.latest_version + ' is available. Go to <a href="' + admin_url + 'plugins.php">Plugins</a> to update.</p></div>');
+                    } else {
+                        resultDiv.html('<div class="notice notice-success inline"><p><strong>You have the latest version!</strong> No updates available at this time.</p></div>');
+                    }
+                } else {
+                    resultDiv.html('<div class="notice notice-error inline"><p><strong>Error:</strong> ' + response.data.message + '</p></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                resultDiv.html('<div class="notice notice-error inline"><p><strong>Error:</strong> Unable to check for updates. Please try again later.</p></div>');
+                console.error('AJAX Error:', status, error);
+            },
+            complete: function() {
+                button.prop('disabled', false).text('Check for Updates Now');
+            }
+        });
     });
 
     // Handle export custom tables button click

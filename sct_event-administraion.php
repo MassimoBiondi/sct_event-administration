@@ -1,13 +1,15 @@
 <?php
 /*
 Plugin Name: SCT Event Administration
-    Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-    Version: 2.9.6
+Plugin URI: https://github.com/MassimoBiondi/sct_event-administration
+Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
+Version: 2.9.6
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: sct-event-administration
+GitHub Plugin URI: MassimoBiondi/sct_event-administration
 */
 
 if (!defined('ABSPATH')) exit;
@@ -19,6 +21,7 @@ define('EVENT_ADMIN_VERSION', '1.9');
 // Load email utilities and placeholder system
 require_once EVENT_ADMIN_PATH . 'includes/class-email-utilities.php';
 require_once EVENT_ADMIN_PATH . 'includes/class-placeholder-system.php';
+require_once EVENT_ADMIN_PATH . 'includes/class-github-updater.php';
 
 // Create database tables on activation
 function event_admin_activate() {
@@ -182,8 +185,19 @@ function event_admin_init() {
 
     // Check for plugin updates
     event_admin_check_for_updates();
+
+    // Initialize GitHub updater
+    if (class_exists('SCT_GitHub_Updater')) {
+        new SCT_GitHub_Updater(__FILE__, 'MassimoBiondi', 'sct_event-administration');
+    }
 }
-add_action('plugins_loaded', 'event_admin_init');
+
+add_action('plugins_loaded', 'event_admin_init', 10);
+
+// Load text domain for translations at init action as required by WordPress 6.7.0
+add_action('init', function() {
+    load_plugin_textdomain('sct-event-administration', false, dirname(plugin_basename(__FILE__)) . '/languages');
+}, 10);
 
 function event_admin_check_for_updates() {
     $current_version = get_option('event_admin_version', '1.0');
@@ -339,14 +353,7 @@ function get_reservations_page_id() {
     return $page_id ? (int)$page_id : null;
 }
 
-function event_admin_load_textdomain() {
-    load_plugin_textdomain(
-        'sct-event-administration',
-        false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
-    );
-}
-add_action('plugins_loaded', 'event_admin_load_textdomain');
+// Removed duplicate text domain loading - already handled above with priority 5
 
 // Register the dashboard widget
 function sct_event_dashboard_widget() {
@@ -363,7 +370,7 @@ function sct_event_dashboard_widget_display() {
     global $wpdb;
 
     // Fetch current and future events
-    $current_date = current_time('Y-m-d');
+    $current_date = date('Y-m-d');
     $events = $wpdb->get_results($wpdb->prepare(
         "SELECT * FROM {$wpdb->prefix}sct_events 
         WHERE DATE(CONCAT(event_date, ' ', event_time)) >= %s
@@ -406,8 +413,8 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
     public function __construct() {
         parent::__construct(
             'sct_events_calendar_widget',
-            __('SCT Events Calendar', 'sct-event-administration'),
-            array('description' => __('A calendar of all SCT events', 'sct-event-administration'))
+            'SCT Events Calendar', // Translation will be handled in widget display
+            array('description' => 'A calendar of all SCT events') // Translation will be handled in widget display
         );
     }
 
@@ -494,19 +501,20 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
         echo '<thead><tr>';
                 
 
-        // Build days array starting from the selected day, using WP locale and abbreviations
+        // Build days array starting from the selected day, using English abbreviations to avoid early translation calls
+        $day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        $day_abbrs = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
         $days = [];
         for ($i = 0; $i < 7; $i++) {
             $day_index = ($start_of_week + $i) % 7;
-            // Use WordPress translation and abbreviation for day names
-            $days[] = esc_html( mb_substr( date_i18n('l', strtotime("Sunday +{$day_index} days")), 0, 1 ) );
+            $days[] = $day_abbrs[$day_index];
         }
 
-        // Output table header with localized abbreviations
+        // Output table header with English abbreviations
         foreach ($days as $i => $abbr) {
-            // Use full localized day name as title for accessibility
-            $full_day = esc_attr( date_i18n('l', strtotime("Sunday +" . (($start_of_week + $i) % 7) . " days")) );
-            echo '<th title="' . $full_day . '">' . $abbr . '</th>';
+            $day_index = ($start_of_week + $i) % 7;
+            $full_day = $day_names[$day_index];
+            echo '<th title="' . esc_attr($full_day) . '">' . esc_html($abbr) . '</th>';
         }
         echo '</tr></thead><tbody><tr>';
 
@@ -551,7 +559,7 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
                 echo '<div id="' . esc_attr($popup_id) . '" class="uk-flex-top" uk-modal>
                         <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical" style="min-width:220px;">
                             <button class="uk-modal-close-default" type="button" uk-close></button>
-                            <h4>' . esc_html(date_i18n('l, F j, Y', strtotime($date))) . '</h4>
+                            <h4>' . esc_html(date('l, F j, Y', strtotime($date))) . '</h4>
                             <ul class="uk-list">';
                 foreach ($events_today as $event) {
                     $event_url = add_query_arg('id', $event->id, $registration_url);
@@ -589,10 +597,11 @@ class SCT_Events_Calendar_Widget extends WP_Widget {
     }
 
     public function form($instance) {
-        $title = !empty($instance['title']) ? $instance['title'] : __('Events Calendar', 'sct-event-administration');
+        // Use hardcoded English strings to avoid early translation loading issues in WordPress 6.7.0
+        $title = !empty($instance['title']) ? $instance['title'] : 'Events Calendar';
         ?>
         <p>
-            <label for="<?php echo esc_attr($this->get_field_id('title')); ?>"><?php esc_attr_e('Title:'); ?></label>
+            <label for="<?php echo esc_attr($this->get_field_id('title')); ?>">Title:</label>
             <input class="widefat" id="<?php echo esc_attr($this->get_field_id('title')); ?>"
                    name="<?php echo esc_attr($this->get_field_name('title')); ?>" type="text"
                    value="<?php echo esc_attr($title); ?>">

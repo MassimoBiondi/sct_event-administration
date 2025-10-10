@@ -114,10 +114,10 @@
                 </td>
             </tr>
             <tr>
-                <th><label for="thumbnail_url"><?php _e('Event Thumbnail', 'sct-event-administration'); ?></label></th>
+                <th><label for="thumbnail_url">Event Thumbnail</label></th>
                 <td>
                     <input type="hidden" id="thumbnail_url" name="thumbnail_url" value="<?php echo ($event && isset($event->thumbnail_url)) ? esc_attr($event->thumbnail_url) : ''; ?>">
-                    <button type="button" class="button" id="upload-thumbnail-button"><?php _e('Upload/Select Image', 'sct-event-administration'); ?></button>
+                    <button type="button" class="button" id="upload-thumbnail-button">Upload/Select Image</button>
                     <div id="thumbnail-preview" style="margin-top: 10px;">
                         <?php if ($event && !empty($event->thumbnail_url)) : ?>
                             <img src="<?php echo esc_url($event->thumbnail_url); ?>" alt="" style="max-width: 100%; height: auto;">
@@ -132,7 +132,7 @@
             <div>
                 <table class="form-table">
                     <tr>
-                        <th><label for="pricing_options"><?php _e('Pricing Options', 'sct-event-administration'); ?></label></th>
+                        <th><label for="pricing_options">Pricing Options</label></th>
                         <td>
                             <div id="pricing-options-container">
                                 <?php if (!empty($event->pricing_options)) :
@@ -151,7 +151,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="goods_services"><?php _e('Goods/Services Options', 'sct-event-administration'); ?></label></th>
+                        <th><label for="goods_services">Goods/Services Options</label></th>
                         <td>
                             <div id="goods-services-container">
                                 <?php if (!empty($event->goods_services)) :
@@ -171,7 +171,7 @@
                         </td>
                     </tr>
                     <tr id="payment-methods-container" style="display: none;">
-                        <th><label for="payment_methods"><?php _e('Payment Methods', 'sct-event-administration'); ?></label></th>
+                        <th><label for="payment_methods">Payment Methods</label></th>
                         <td>
                             <div id="payment-methods-list">
                                 <?php if (!empty($event->payment_methods)) :
@@ -196,7 +196,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="publish_date"><?php _e('Publish Date and Time', 'sct-event-administration'); ?></label></th>
+                        <th><label for="publish_date">Publish Date and Time</label></th>
                         <td>
                             <input type="datetime-local" id="publish_date" name="publish_date" 
                                 value="<?php echo ($event && $event->publish_date) ? esc_attr(date('Y-m-d\TH:i', strtotime($event->publish_date))) : ''; ?>">
@@ -204,7 +204,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="unpublish_date"><?php _e('Unpublish Date and Time', 'sct-event-administration'); ?></label></th>
+                        <th><label for="unpublish_date">Unpublish Date and Time</label></th>
                         <td>
                             <input type="datetime-local" id="unpublish_date" name="unpublish_date" 
                                 value="<?php echo ($event && $event->unpublish_date) ? esc_attr(date('Y-m-d\TH:i', strtotime($event->unpublish_date))) : ''; ?>">>
@@ -317,11 +317,11 @@
                             <!-- Available Variables Postbox -->
                             <div class="postbox">
                                 <div class="postbox-header">
-                                    <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                                    <h2 class="hndle">Available Variables</h2>
                                 </div>
                                 <div class="inside">
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                        <h4>Registration Data</h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{registration.name}}</code>
                                             <code class="variable-code">{{registration.email}}</code>
@@ -332,7 +332,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                        <h4>Event Information</h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{event.name}}</code>
                                             <code class="variable-code">{{event.date}}</code>
@@ -344,7 +344,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Capacity & Payment', 'sct-events'); ?></h4>
+                                        <h4>Capacity & Payment</h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{capacity.total}}</code>
                                             <code class="variable-code">{{capacity.remaining}}</code>
@@ -354,7 +354,7 @@
                                     </div>
                                     
                                     <div class="placeholder-category">
-                                        <h4><?php _e('Website Information', 'sct-events'); ?></h4>
+                                        <h4>Website Information</h4>
                                         <div class="placeholder-list">
                                             <code class="variable-code">{{website.name}}</code>
                                             <code class="variable-code">{{website.url}}</code>
@@ -364,7 +364,7 @@
                                     </div>
                                     
                                     <p class="description">
-                                        <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                        <em>Note: Old format like {name} still works for backward compatibility</em>
                                     </p>
                                 </div>
                             </div>
