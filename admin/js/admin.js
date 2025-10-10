@@ -48,6 +48,23 @@ jQuery(document).ready(function($) {
 
     });
 
+    // Handle external registration checkbox toggle
+    $('#external_registration').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#external_registration_fields').show();
+            $('#external_registration_url').prop('required', true);
+        } else {
+            $('#external_registration_fields').hide();
+            $('#external_registration_url').prop('required', false);
+        }
+    });
+
+    // Initialize external registration fields visibility on page load
+    if ($('#external_registration').is(':checked')) {
+        $('#external_registration_fields').show();
+        $('#external_registration_url').prop('required', true);
+    }
+
     $(document).on('click', '#confirm-copy-event', function () {
 
         selectedEventName = $('#previous-events-dropdown').val();

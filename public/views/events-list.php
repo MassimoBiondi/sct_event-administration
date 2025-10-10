@@ -49,6 +49,16 @@
                         <div class="registration-closed">
                             <p>Registration for this event is closed.</p>
                         </div>
+                    <?php elseif (isset($event->external_registration) && $event->external_registration): ?>
+                        <div class="event-external-registration">
+                            <a href="<?php echo esc_url($event->external_registration_url); ?>" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               class="register-button external-register-button">
+                                <?php echo esc_html(isset($event->external_registration_text) ? $event->external_registration_text : 'Register Externally'); ?>
+                                <span class="dashicons dashicons-external" style="font-size: 14px; margin-left: 5px; vertical-align: text-top;"></span>
+                            </a>
+                        </div>
                     <?php elseif ($event->guest_capacity == 0 || $remaining_capacity > 0): ?>
                         <div class="event-available">
                             <?php if ($event->guest_capacity > 0): ?>

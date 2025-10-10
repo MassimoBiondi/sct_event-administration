@@ -58,8 +58,8 @@ class EventPublic {
                 array(
                     'ajaxurl' => admin_url('admin-ajax.php'),
                     'nonce' => wp_create_nonce('event_registration_nonce'),
-                    'currencySymbol' => $sct_settings['currency_symbol'],
-                    'currencyFormat' => $sct_settings['currency_format']
+                    'currencySymbol' => isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : '$',
+                    'currencyFormat' => isset($sct_settings['currency_format']) ? $sct_settings['currency_format'] : 2
                 )
             );
         }
@@ -112,10 +112,11 @@ class EventPublic {
         // );
         
         // Get the registration page ID from settings
-        $registration_page_id = get_option('event_admin_settings', [])["event_registration_page"];
+        $settings = get_option('event_admin_settings', []);
+        $registration_page_id = isset($settings['event_registration_page']) ? $settings['event_registration_page'] : null;
 
         // Get the management page ID from settings
-        $management_page_id = get_option('event_admin_settings', [])["event_management_page"];
+        $management_page_id = isset($settings['event_management_page']) ? $settings['event_management_page'] : null;
         
         // If no registration page is set, use the current page
         if (!$registration_page_id) {
@@ -456,14 +457,16 @@ class EventPublic {
         $total_price = 0;
         $has_rows = false;
 
-        $currency_symbol = $sct_settings['currency_symbol'];
-        $currency_format = intval($sct_settings['currency_format']);
+        $currency_symbol = isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : '$';
+        $currency_format = isset($sct_settings['currency_format']) ? intval($sct_settings['currency_format']) : 2;
 
         $pricing_rows = '';
 
+        $settings = get_option('event_admin_settings', []);
+        $management_page_id = isset($settings['event_management_page']) ? $settings['event_management_page'] : null;
         $placeholder_data['reservation_link'] = add_query_arg(array(
             'uid' => $registration_data['unique_identifier']
-        ), get_permalink(get_option('event_admin_settings')['event_management_page']));
+        ), get_permalink($management_page_id));
 
         // Process pricing options
         if (!empty($registration_data['guest_details'])) {
@@ -602,10 +605,12 @@ class EventPublic {
         );
 
         // Add the reservation link to the confirmation email
+        $settings = get_option('event_admin_settings', []);
+        $management_page_id = isset($settings['event_management_page']) ? $settings['event_management_page'] : null;
         $reservation_url = add_query_arg(array(
             'action' => 'manage_reservation',
             'uid' => $registration_data['unique_identifier']
-        ), get_permalink(get_option('event_admin_settings')['event_management_page']));
+        ), get_permalink($management_page_id));
 
         // Create HTML version with proper link
         $confirmation_message_html = str_replace(

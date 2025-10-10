@@ -57,6 +57,9 @@ function event_admin_activate() {
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
         payment_methods text DEFAULT NULL,
+        external_registration tinyint(1) DEFAULT 0,
+        external_registration_url varchar(500) DEFAULT NULL,
+        external_registration_text varchar(255) DEFAULT 'Register Externally',
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
@@ -202,10 +205,27 @@ function event_admin_update_database() {
     $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
     if (!in_array('has_waiting_list', $columns)) {
         $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN has_waiting_list tinyint(1) DEFAULT 0 AFTER by_lottery");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
     }
 
     // Drop the sct_event_emails table if it exists
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sct_event_emails");
+
+    // Check if external registration columns exist, if not add them
+    if (!in_array('external_registration', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration tinyint(1) DEFAULT 0 AFTER payment_methods");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+    if (!in_array('external_registration_url', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration_url varchar(500) DEFAULT NULL AFTER external_registration");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+    if (!in_array('external_registration_text', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration_text varchar(255) DEFAULT 'Register Externally' AFTER external_registration_url");
+    }
 
     // Update the sct_events table
     $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}sct_events (
@@ -229,6 +249,9 @@ function event_admin_update_database() {
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
         payment_methods text DEFAULT NULL,
+        external_registration tinyint(1) DEFAULT 0,
+        external_registration_url varchar(500) DEFAULT NULL,
+        external_registration_text varchar(255) DEFAULT 'Register Externally',
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     $result = dbDelta($sql);

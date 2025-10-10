@@ -257,6 +257,39 @@
                         </td>
                     </tr>
                     <tr>
+                        <th><label for="external_registration">External Registration</label></th>
+                        <td>
+                            <input type="checkbox" 
+                                   id="external_registration" 
+                                   name="external_registration" 
+                                   value="1"
+                                   <?php echo $event && isset($event->external_registration) && $event->external_registration ? 'checked' : ''; ?>>
+                                <p class="description">Use external registration system instead of built-in registration</p>
+                        </td>
+                    </tr>
+                    <tr id="external_registration_fields" style="display: none;">
+                        <th><label for="external_registration_url">External Registration URL</label></th>
+                        <td>
+                            <input type="url" 
+                                   id="external_registration_url" 
+                                   name="external_registration_url" 
+                                   class="regular-text"
+                                   value="<?php echo $event && isset($event->external_registration_url) ? esc_attr($event->external_registration_url) : ''; ?>"
+                                   placeholder="https://example.com/register">
+                            <p class="description">URL where users will be redirected for registration</p>
+                            
+                            <br><br>
+                            <label for="external_registration_text">Button Text</label><br>
+                            <input type="text" 
+                                   id="external_registration_text" 
+                                   name="external_registration_text" 
+                                   class="regular-text"
+                                   value="<?php echo $event && isset($event->external_registration_text) ? esc_attr($event->external_registration_text) : 'Register Externally'; ?>"
+                                   placeholder="Register Externally">
+                            <p class="description">Text to display on the registration button</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th><label for="custom_email_template">Custom Email Template</label></th>
                         <td>
                             <?php 

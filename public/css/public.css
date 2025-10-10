@@ -41,6 +41,55 @@
     margin-top: 0;
 }
 
+/* External Registration Styles */
+.external-registration-container {
+    background: #f0f8ff;
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.external-registration-info h3 {
+    color: #2c5530;
+    margin-bottom: 10px;
+}
+
+.external-registration-info p {
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.external-registration-button,
+.external-register-button {
+    display: inline-flex;
+    align-items: center;
+    background: #4CAF50;
+    color: white !important;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.external-registration-button:hover,
+.external-register-button:hover {
+    background: #45a049;
+    color: white !important;
+    text-decoration: none;
+}
+
+.event-external-registration {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
 
 #event-registration-form {
     /* max-width: 500px; */

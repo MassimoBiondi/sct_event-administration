@@ -22,6 +22,7 @@
                     <th class="collapse column-small">Date</th>
                     <th class="collapse column-small">Time</th>
                     <th class="collapse">Location</th>
+                    <th class="collapse column-small center">Type</th>
                     <th class="collapse column-small center">Capacity</th>
                     <th class="collapse column-small center">Registered</th>
                     <th class="collapse column-small center">Available</th>
@@ -81,6 +82,11 @@
                             <?php endif; ?>
                         </td>
                         <td class="collapse"><?php echo esc_html(stripslashes($event->location_name)); ?></td>
+                        <td class="collapse column-small center">
+                            <?php echo (isset($event->external_registration) && $event->external_registration) ? 
+                                '<span class="dashicons dashicons-external" title="External Registration"></span>' : 
+                                '<span class="dashicons dashicons-groups" title="Internal Registration"></span>'; ?>
+                        </td>
                         <td class="collapse column-small center"><?php echo ($event->guest_capacity > 0) ? esc_html($event->guest_capacity) : 'n/a'; ?></td>
                         <td class="collapse column-small center"><?php echo esc_html($registered); ?></td>
                         <td class="collapse column-small center"><?php echo ($event->guest_capacity > 0) ? esc_html($available) : 'n/a'; ?></td>

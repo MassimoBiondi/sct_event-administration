@@ -294,6 +294,9 @@ class EventAdmin {
             'member_only' => isset($_POST['member_only']) ? 1 : 0,
             'by_lottery' => isset($_POST['by_lottery']) ? 1 : 0,
             'has_waiting_list' => isset($_POST['has_waiting_list']) ? 1 : 0,
+            'external_registration' => isset($_POST['external_registration']) ? 1 : 0,
+            'external_registration_url' => isset($_POST['external_registration_url']) ? esc_url_raw($_POST['external_registration_url']) : null,
+            'external_registration_text' => isset($_POST['external_registration_text']) ? sanitize_text_field($_POST['external_registration_text']) : 'Register Externally',
             'custom_email_template' => isset($_POST['custom_email_template']) ? wp_unslash($_POST['custom_email_template']) : null,
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
@@ -337,6 +340,9 @@ class EventAdmin {
             '%d', // member_only
             '%d', // by_lottery
             '%d', // has_waiting_list
+            '%d', // external_registration
+            '%s', // external_registration_url
+            '%s', // external_registration_text
             '%s', // custom_email_template
             '%s', // thumbnail_url
             '%s', // publish_date
