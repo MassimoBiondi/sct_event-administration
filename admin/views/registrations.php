@@ -311,35 +311,58 @@
                         <textarea id="email_body" name="email_body" rows="10" class="large-text" required></textarea>
                     </div>
 
-                    <div class="form-field placeholder-info">
-                        <p><strong>Available placeholders:</strong></p>
-                        <p>
-
-                            <code>{name}</code> - Registrant's name<br>
-                            <code>{email}</code> - Registrant's email<br>
-                            <code>{guest_count}</code> - Number of guests<br>
-                            <code>{event_name}</code> - Event name<br>
-                            <code>{event_date}</code> - Event date<br>
-                            <code>{event_time}</code> - Event time<br>
-                            <code>{description}</code> - Event description<br>
-                            <code>{location_name}</code> - Event location name<br>
-                            <code>{location_url}</code> - Event location URL<br>
-                            <code>{location_link}</code> - Event location link<br>
-                            <code>{guest_capacity}</code> - Event guest capacity<br>
-                            <code>{member_only}</code> - Member-only event<br>
-                            <code>{total_price}</code> - Total price<br>
-                            <code>{remaining_capacity}</code> - Remaining capacity<br>
-                            <code>{payment_status}</code> - Payment Status<br>
-                            <code>{payment_type}</code> - Payment Type<br>
-                            <code>{payment_name}</code> - Payment Name<br>
-                            <code>{payment_link}</code> - Payment link<br>
-                            <code>{payment_description}</code> - Payment description<br>
-                            <code>{payment_method_details}</code> - Payment method details<br>
-                            <code>{pricing_overview}</code> - Pricing overview table<br>
-                            <code>{registration_id}</code> - Registration ID<br>
-                            <code>{currency_symbol}</code> - Currency symbol<br>
-                            <code>{currency_format}</code> - Currency format<br>
-                        </p>
+                    <div class="postbox">
+                        <div class="postbox-header">
+                            <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                        </div>
+                        <div class="inside">
+                            <div class="placeholder-category">
+                                <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                <div class="placeholder-list">
+                                    <code>{{registration.name}}</code>
+                                    <code>{{registration.email}}</code>
+                                    <code>{{registration.guest_count}}</code>
+                                    <code>{{registration.id}}</code>
+                                    <code>{{registration.manage_link}}</code>
+                                </div>
+                            </div>
+                            
+                            <div class="placeholder-category">
+                                <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                <div class="placeholder-list">
+                                    <code>{{event.name}}</code>
+                                    <code>{{event.date}}</code>
+                                    <code>{{event.time}}</code>
+                                    <code>{{event.description}}</code>
+                                    <code>{{event.location_name}}</code>
+                                    <code>{{event.location_link}}</code>
+                                </div>
+                            </div>
+                            
+                            <div class="placeholder-category">
+                                <h4><?php _e('Capacity & Payment', 'sct-events'); ?></h4>
+                                <div class="placeholder-list">
+                                    <code>{{capacity.total}}</code>
+                                    <code>{{capacity.remaining}}</code>
+                                    <code>{{payment.total}}</code>
+                                    <code>{{payment.status}}</code>
+                                </div>
+                            </div>
+                            
+                            <div class="placeholder-category">
+                                <h4><?php _e('Website Information', 'sct-events'); ?></h4>
+                                <div class="placeholder-list">
+                                    <code>{{website.name}}</code>
+                                    <code>{{website.url}}</code>
+                                    <code>{{date.current}}</code>
+                                    <code>{{date.year}}</code>
+                                </div>
+                            </div>
+                            
+                            <p class="description">
+                                <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                            </p>
+                        </div>
                     </div>
                     
                     <div class="submit-buttons">

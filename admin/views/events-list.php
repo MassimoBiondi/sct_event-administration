@@ -41,8 +41,8 @@
                         $registered = $registered ?: 0;
                         $available = ($event->guest_capacity > 0) ? $event->guest_capacity - $registered : 'n/a';
                         $max_guests_per_registration = ($event->max_guests_per_registration > 0) ? $event->max_guests_per_registration : 'n/a';
-                        $registration_page_id = get_option('event_admin_settings', [])["event_registration_page"];
-                        $managemnt_page_id = get_option('event_admin_settings', [])["event_management_page"];
+                        $registration_page_id = get_option('event_admin_settings', [])["event_registration_page"] ?? 0;
+                        $managemnt_page_id = get_option('event_admin_settings', [])["event_management_page"] ?? 0;
                         $registration_url = add_query_arg('id', $event->id, get_permalink($registration_page_id));
 
                         // Create an object with additional properties

@@ -109,17 +109,17 @@
                            id="admin_email" 
                            name="admin_email" 
                            class="regular-text"
-                           value="<?php echo $event->admin_email ? esc_attr($event->admin_email) : get_bloginfo('admin_email'); ?>"
+                           value="<?php echo ($event && $event->admin_email) ? esc_attr($event->admin_email) : get_bloginfo('admin_email'); ?>"
                            required>
                 </td>
             </tr>
             <tr>
                 <th><label for="thumbnail_url"><?php _e('Event Thumbnail', 'sct-event-administration'); ?></label></th>
                 <td>
-                    <input type="hidden" id="thumbnail_url" name="thumbnail_url" value="<?php echo esc_attr($event->thumbnail_url ?? ''); ?>">
+                    <input type="hidden" id="thumbnail_url" name="thumbnail_url" value="<?php echo ($event && isset($event->thumbnail_url)) ? esc_attr($event->thumbnail_url) : ''; ?>">
                     <button type="button" class="button" id="upload-thumbnail-button"><?php _e('Upload/Select Image', 'sct-event-administration'); ?></button>
                     <div id="thumbnail-preview" style="margin-top: 10px;">
-                        <?php if (!empty($event->thumbnail_url)) : ?>
+                        <?php if ($event && !empty($event->thumbnail_url)) : ?>
                             <img src="<?php echo esc_url($event->thumbnail_url); ?>" alt="" style="max-width: 100%; height: auto;">
                         <?php endif; ?>
                     </div>
@@ -199,7 +199,7 @@
                         <th><label for="publish_date"><?php _e('Publish Date and Time', 'sct-event-administration'); ?></label></th>
                         <td>
                             <input type="datetime-local" id="publish_date" name="publish_date" 
-                                value="<?php echo $event->publish_date ? esc_attr(date('Y-m-d\TH:i', strtotime($event->publish_date))) : NULL; ?>">
+                                value="<?php echo ($event && $event->publish_date) ? esc_attr(date('Y-m-d\TH:i', strtotime($event->publish_date))) : ''; ?>">
                             <p class="description">Set the date and time when the event should be published.</p>
                         </td>
                     </tr>
@@ -207,7 +207,7 @@
                         <th><label for="unpublish_date"><?php _e('Unpublish Date and Time', 'sct-event-administration'); ?></label></th>
                         <td>
                             <input type="datetime-local" id="unpublish_date" name="unpublish_date" 
-                                value="<?php echo $event->unpublish_date ? esc_attr(date('Y-m-d\TH:i', strtotime($event->unpublish_date))) : NULL; ?>">
+                                value="<?php echo ($event && $event->unpublish_date) ? esc_attr(date('Y-m-d\TH:i', strtotime($event->unpublish_date))) : ''; ?>">>
                             <p class="description">Set the date and time when the event should be unpublished.</p>
                         </td>
                     </tr>
@@ -217,7 +217,7 @@
                             <input type="number" 
                                    id="max_guests_per_registration" 
                                    name="max_guests_per_registration" 
-                                   value="<?php echo esc_attr($event->max_guests_per_registration ?? 0); ?>" 
+                                   value="<?php echo ($event && isset($event->max_guests_per_registration)) ? esc_attr($event->max_guests_per_registration) : 0; ?>" 
                                    min="0" 
                                    required>
                             
@@ -277,35 +277,63 @@
                                 )
                             );
                             ?>
-
-
-
-                            <div class="form-field placeholder-info">
-                                <p><strong>Available placeholders:</strong></p>
-                                <p>
-                                    <code>{name}</code> - Registrant's name<br>
-                                    <code>{email}</code> - Registrant's email<br>
-                                    <code>{guest_count}</code> - Number of guests<br>
-                                    <code>{event_name}</code> - Event name<br>
-                                    <code>{event_date}</code> - Event date<br>
-                                    <code>{event_time}</code> - Event time<br>
-                                    <code>{description}</code> - Event description<br>
-                                    <code>{location_name}</code> - Event location name<br>
-                                    <code>{location_url}</code> - Event location URL<br>
-                                    <code>{location_link}</code> - Event location link<br>
-                                    <code>{guest_capacity}</code> - Event guest capacity<br>
-                                    <code>{member_only}</code> - Member-only event<br>
-                                    <code>{total_price}</code> - Total price<br>
-                                    <code>{remaining_capacity}</code> - Remaining capacity<br>
-                                    <code>{payment_status}</code> - Payment Status<br>
-                                    <code>{payment_type}</code> - Payment Type<br>
-                                    <code>{payment_name}</code> - Payment Name<br>
-                                    <code>{payment_link}</code> - Payment link<br>
-                                    <code>{payment_description}</code> - Payment description<br>
-                                    <code>{payment_method_details}</code> - Payment method details<br>
-                                    <code>{pricing_overview}</code> - Pricing overview table<br>
-                                    <code>{reservation_link}</code> - Reservation Management Link<br>
-                                </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <!-- Available Variables Postbox -->
+                            <div class="postbox">
+                                <div class="postbox-header">
+                                    <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                                </div>
+                                <div class="inside">
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{registration.name}}</code>
+                                            <code class="variable-code">{{registration.email}}</code>
+                                            <code class="variable-code">{{registration.guest_count}}</code>
+                                            <code class="variable-code">{{registration.id}}</code>
+                                            <code class="variable-code">{{registration.manage_link}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{event.name}}</code>
+                                            <code class="variable-code">{{event.date}}</code>
+                                            <code class="variable-code">{{event.time}}</code>
+                                            <code class="variable-code">{{event.description}}</code>
+                                            <code class="variable-code">{{event.location_name}}</code>
+                                            <code class="variable-code">{{event.location_link}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Capacity & Payment', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{capacity.total}}</code>
+                                            <code class="variable-code">{{capacity.remaining}}</code>
+                                            <code class="variable-code">{{payment.total}}</code>
+                                            <code class="variable-code">{{payment.status}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Website Information', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{website.name}}</code>
+                                            <code class="variable-code">{{website.url}}</code>
+                                            <code class="variable-code">{{date.current}}</code>
+                                            <code class="variable-code">{{date.year}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="description">
+                                        <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                    </p>
+                                </div>
                             </div>
                         </td>
                     </tr>

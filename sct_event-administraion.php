@@ -2,7 +2,7 @@
 /*
 Plugin Name: SCT Event Administration
     Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-    Version: 2.9.5
+    Version: 2.9.6
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -15,6 +15,10 @@ if (!defined('ABSPATH')) exit;
 define('EVENT_ADMIN_PATH', plugin_dir_path(__FILE__));
 define('EVENT_ADMIN_URL', plugin_dir_url(__FILE__));
 define('EVENT_ADMIN_VERSION', '1.9');
+
+// Load email utilities and placeholder system
+require_once EVENT_ADMIN_PATH . 'includes/class-email-utilities.php';
+require_once EVENT_ADMIN_PATH . 'includes/class-placeholder-system.php';
 
 // Create database tables on activation
 function event_admin_activate() {
@@ -302,7 +306,6 @@ function get_reservations_page_id() {
 
     $page_id = $wpdb->get_var($wpdb->prepare(
         "SELECT ID FROM $wpdb->posts
-        -- WHERE post_title = %s
         WHERE post_name = %s
         AND post_type = 'page'
         AND post_status IN ('publish', 'draft')

@@ -94,7 +94,7 @@ class EventPublic {
 
         // Add LIMIT clause if limit parameter is set and is a positive number
         if (!is_null($atts['limit']) && is_numeric($atts['limit']) && $atts['limit'] > 0) {
-            $query .= $wpdb->prepare(" LIMIT %d", intval($atts['limit']));
+            $query .= " LIMIT " . intval($atts['limit']);
         }
 
         // $query .= " AND (publish_date IS NULL OR publish_date <= NOW())";
@@ -707,123 +707,44 @@ class EventPublic {
 
 
     private function log_email($event_id, $email_type, $recipient_email, $subject, $message, $status = 'sent') {
-        global $wpdb;
-        $wpdb->insert(
-            "{$wpdb->prefix}sct_event_emails",
-            array(
-                'event_id'        => $event_id,
-                'email_type'      => $email_type,
-                'recipients'      => $recipient_email,
-                'subject'         => $subject,
-                'message'         => $message,
-                'sent_date'       => current_time('mysql'),
-                'status'          => $status,
-            ),
-            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
-        );
+        return SCT_Event_Email_Utilities::log_email($event_id, $email_type, $recipient_email, $subject, $message, $status);
     }
 
     private function generate_dkim_signature($subject, $from_email, $to_email, $body) {
-        $private_key_path = EVENT_ADMIN_PATH . 'admin/keys/dkim_private.key';
-        
-        if (!file_exists($private_key_path)) {
-            return false;
-        }
-        
-        $private_key = file_get_contents($private_key_path);
-        $domain = 'swissclubtokyo.com';
-        $selector = 'wordpress';
-        
-        $body_hash = base64_encode(hash('sha256', str_replace("\r\n", "\n", rtrim($body)) . "\n", true));
-        
-        $dkim_header = "v=1; a=rsa-sha256; c=relaxed/simple; d={$domain}; s={$selector}; t=" . time() . "; h=from:to:subject:date; bh={$body_hash}; b=";
-        
-        $headers_to_sign = "from:{$from_email}\r\nto:{$to_email}\r\nsubject:{$subject}\r\ndate:" . date('r') . "\r\ndkim-signature:" . $dkim_header;
-        
-        if (openssl_sign($headers_to_sign, $signature, $private_key, OPENSSL_ALGO_SHA256)) {
-            $signature_b64 = base64_encode($signature);
-            return "DKIM-Signature: {$dkim_header}{$signature_b64}";
-        }
-        
-        return false;
+        return SCT_Event_Email_Utilities::generate_dkim_signature($subject, $from_email, $to_email, $body);
     }
     
     private function replace_email_placeholders($template, $data) {
-        $sct_settings = get_option('event_admin_settings', array(
-            'event_registration_page' => get_option('event_registration_page'),
-            'event_management_page' => get_option('event_management_page'),
-            'admin_email' => get_option('admin_email'),
-            'currency' => get_option('currency'),
-            'currency_symbol' => get_option('currency_symbol'),
-            'currency_format' => get_option('currency_format'),
-            'notification_subject' => 'New Event Registration: {event_name}',
-            'confirmation_subject' => 'Registration Confirmation: {event_name}',
-            'notification_template' => $this->get_default_notification_template(),
-            'confirmation_template' => $this->get_default_confirmation_template()
-        ));
-
-
-        // Define placeholders and their replacements
-        $placeholders = array(
-            '{registration_id}' => $data['registration_id'] ?? '',
-            '{event_name}' => $data['event_name'] ?? '',
-            '{name}' => $data['name'] ?? '',
-            '{email}' => $data['email'] ?? '',
-            '{guest_count}' => $data['guest_count'] ?? '',
-            '{registration_date}' => $data['registration_date'] ?? '',
-            '{event_date}' => $data['event_date'] ?? '',
-            '{event_time}' => $data['event_time'] ?? '',
-            '{location_name}' => esc_html(stripslashes($data['location_name'])) ?? '',
-            '{location_url}' => $data['location_link'] ?? '',
-            '{location_link}' => '<a href="' . $data['location_link'] . '" target="_blank" rel="noopener">View on Map</a>',
-            '{pricing_breakdown}' => $data['pricing_breakdown'] ?? '',
-            '{total_price}' => $data['total_price'] ?? '',
-            '{admin_email}' => '<a href="mailto:' . $sct_settings['admin_email'] . '">' . $sct_settings['admin_email'] . '</a>',
-            '{reservation_link}' => '<a href="' . esc_url($data['reservation_link']) . '">Manage your registration</a>' ?? '',
-            '{description}' => $data['description'] ?? '',
-            '{guest_capacity}' => $data['guest_capacity'] ?? 'Unlimited',
-            '{member_only}' => isset($data['member_only']) ? ($data['member_only'] ? 'Yes' : 'No') : 'No',
-            '{remaining_capacity}' => $data['remaining_capacity'] ?? 'N/A',
-            '{payment_status}' => $data['payment_status'] ?? 'Pending',
-            '{payment_type}' => $data['payment_type'] ?? 'N/A',
-            '{payment_name}' => $data['payment_name'] ?? 'N/A',
-            '{payment_link}' => $data['payment_link'] ?? 'N/A',
-            '{payment_description}' => $data['payment_description'] ?? 'N/A',
-            '{payment_method_details}' => $data['payment_method_details'] ?? '', 
-            '{pricing_overview}' => $data['pricing_overview'] ?? ''
-        );
-
-        // Replace placeholders in the template
-        return str_replace(array_keys($placeholders), array_values($placeholders), $template);
+        return SCT_Event_Email_Utilities::replace_email_placeholders($template, $data);
     }
     
     private function get_default_notification_template() {
-        return "New registration for {event_name}\n\n" .
+        return "New registration for {{event.name}}\n\n" .
                "Registration Details:\n" .
-               "Name: {name}\n" .
-               "Email: {email}\n" .
-               "Number of Guests: {guest_count}\n\n" .
-               "Registration Date: {registration_date}\n\n" .
-               "{pricing_breakdown}\n\n" .
+               "Name: {{registration.name}}\n" .
+               "Email: {{registration.email}}\n" .
+               "Number of Guests: {{registration.guest_count}}\n\n" .
+               "Registration Date: {{registration.date}}\n\n" .
+               "{{registration.pricing_breakdown}}\n\n" .
                "Event Details:\n" .
-               "Date: {event_date}\n" .
-               "Time: {event_time}\n" .
-               "Location: {location_name}" .
-               "Location Url: {location_url}";
+               "Date: {{event.date}}\n" .
+               "Time: {{event.time}}\n" .
+               "Location: {{event.location_name}}" .
+               "Location Url: {{event.location_url}}";
     }
     
     private function get_default_confirmation_template() {
-        return "Dear {name},\n\n" .
-               "Thank you for registering for {event_name}.\n\n" .
+        return "Dear {{registration.name}},\n\n" .
+               "Thank you for registering for {{event.name}}.\n\n" .
                "Registration Details:\n" .
-               "Number of Guests: {guest_count}\n" .
-               "Event Date: {event_date}\n" .
-               "Event Time: {event_time}\n" .
-               "Location: {location_link}\n\n" .
-               "{pricing_breakdown}\n\n" .
-               "Manage your registration: {reservation_link}\n\n" .
+               "Number of Guests: {{registration.guest_count}}\n" .
+               "Event Date: {{event.date}}\n" .
+               "Event Time: {{event.time}}\n" .
+               "Location: {{event.location_link}}\n\n" .
+               "{{registration.pricing_breakdown}}\n\n" .
+               "Manage your registration: {{registration.reservation_link}}\n\n" .
                "We look forward to seeing you!\n\n" .
-               "{admin_email}\n\n" .
+               "{{admin.email}}\n\n" .
                "Best regards,\n" .
                "The Event Team";
     }

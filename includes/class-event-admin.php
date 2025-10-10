@@ -105,11 +105,11 @@ class EventAdmin {
         // Get only upcoming events
         $current_date = current_time('Y-m-d');
         
-        $events = $wpdb->get_results($wpdb->prepare(
+        $events = $wpdb->get_results(
             "SELECT * FROM {$wpdb->prefix}sct_events 
             WHERE CONCAT(event_date, ' ', event_time) >= NOW()
             ORDER BY event_date ASC, event_time ASC"
-        ));
+        );
         
         include EVENT_ADMIN_PATH . 'admin/views/events-list.php';
     }
@@ -734,67 +734,12 @@ class EventAdmin {
     }
 
     private function log_email($event_id, $email_type, $recipient_email, $subject, $message, $status = 'sent') {
-        global $wpdb;
-        $wpdb->insert(
-            "{$wpdb->prefix}sct_event_emails",
-            array(
-                'event_id'    => $event_id,
-                'email_type'  => $email_type,
-                'recipients'  => $recipient_email,
-                'subject'     => $subject,
-                'message'     => $message,
-                'sent_date'   => current_time('mysql'),
-                'status'      => $status,
-            ),
-            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
-        );
+        return SCT_Event_Email_Utilities::log_email($event_id, $email_type, $recipient_email, $subject, $message, $status);
     }
 
     // Helper for placeholder replacement (if not already present)
     private function replace_email_placeholders($template, $data) {
-        $sct_settings = get_option('event_admin_settings', array(
-            'event_registration_page' => get_option('event_registration_page'),
-            'event_management_page' => get_option('event_management_page'),
-            'admin_email' => get_option('admin_email'),
-            'currency' => get_option('currency'),
-            'currency_symbol' => get_option('currency_symbol'),
-            'currency_format' => get_option('currency_format'),
-            'notification_subject' => 'New Event Registration: {event_name}',
-            'notification_template' => $this->get_default_notification_template(),
-            'confirmation_subject' => 'Registration Confirmation: {event_name}',
-            'confirmation_template' => $this->get_default_confirmation_template()
-        ));
-
-        $placeholders = array(
-            '{registration_id}' => $data['registration_id'] ?? '',
-            '{event_name}' => $data['event_name'] ?? '',
-            '{name}' => $data['name'] ?? '',
-            '{email}' => $data['email'] ?? '',
-            '{guest_count}' => $data['guest_count'] ?? '',
-            '{registration_date}' => $data['registration_date'] ?? '',
-            '{event_date}' => $data['event_date'] ?? '',
-            '{event_time}' => $data['event_time'] ?? '',
-            '{location_name}' => esc_html(stripslashes($data['location_name'])) ?? '',
-            '{location_url}' => $data['location_link'] ?? '',
-            '{location_link}' => '<a href="' . $data['location_link'] . '" target="_blank" rel="noopener">View on Map</a>',
-            '{pricing_breakdown}' => $data['pricing_breakdown'] ?? '',
-            '{total_price}' => $data['total_price'] ?? '',
-            '{admin_email}' => '<a href="mailto:' . $sct_settings['admin_email'] . '">' . $sct_settings['admin_email'] . '</a>',
-            '{manage_link}' => $data['manage_link'] ?? '',
-            '{description}' => $data['description'] ?? '',
-            '{guest_capacity}' => $data['guest_capacity'] ?? 'Unlimited',
-            '{member_only}' => isset($data['member_only']) ? ($data['member_only'] ? 'Yes' : 'No') : 'No',
-            '{remaining_capacity}' => $data['remaining_capacity'] ?? 'N/A',
-            '{payment_status}' => $data['payment_status'] ?? 'Pending',
-            '{payment_type}' => $data['payment_type'] ?? 'N/A',
-            '{payment_name}' => $data['payment_name'] ?? 'N/A',
-            '{payment_link}' => $data['payment_link'] ?? 'N/A',
-            '{payment_description}' => $data['payment_description'] ?? 'N/A',
-            '{payment_method_details}' => $data['payment_method_details'] ?? '',
-            '{pricing_overview}' => $data['pricing_overview'] ?? ''
-        );
-
-        return str_replace(array_keys($placeholders), array_values($placeholders), $template);
+        return SCT_Event_Email_Utilities::replace_email_placeholders($template, $data);
     }
 
     public function send_registration_email() {
@@ -1014,18 +959,18 @@ class EventAdmin {
     }
 
     private function get_default_notification_template() {
-        return "New registration for {event_name}\n\n" .
+        return "New registration for {{event.name}}\n\n" .
                "Registration Details:\n" .
-               "Name: {name}\n" .
-               "Email: {email}\n" .
-               "Number of Guests: {guest_count}\n" .
-               "{pricing_breakdown}" .
-               "Registration Date: {registration_date}\n\n" .
+               "Name: {{registration.name}}\n" .
+               "Email: {{registration.email}}\n" .
+               "Number of Guests: {{registration.guest_count}}\n" .
+               "{{registration.pricing_breakdown}}" .
+               "Registration Date: {{registration.date}}\n\n" .
                "Event Details:\n" .
-               "Event Name: {event_name}\n" .
-               "Event Date: {event_date}\n" .
-               "Event Time: {event_time}\n" .
-               "Location: {location_name}";
+               "Event Name: {{event.name}}\n" .
+               "Event Date: {{event.date}}\n" .
+               "Event Time: {{event.time}}\n" .
+               "Location: {{event.location_name}}";
     }
 
     public function getDefaultNotificationTemplate() {
@@ -1035,31 +980,31 @@ class EventAdmin {
     private function get_default_confirmation_template() {
         return "<div class='header'>
             <h1>Registration Confirmed!</h1>
-            <p>Your spot for <strong>{event_name}</strong> is secured.</p>
+            <p>Your spot for <strong>{{event.name}}</strong> is secured.</p>
         </div>
-        <div class='content-section'><strong>Hello {name},</strong>
-            Thank you for registering for <strong>{event_name}</strong>!
+        <div class='content-section'><strong>Hello {{registration.name}},</strong>
+            Thank you for registering for <strong>{{event.name}}</strong>!
             We're excited to see you there and have prepared this confirmation for your records
         </div>
         <div class='content-section'>
             <h3>Event Details</h3>
-            <p><strong class='strong-text'>Event:</strong>{event_name}</p>
-            <p><strong class='strong-text'>Date:</strong>{event_date}</p>
-            <p><strong class='strong-text'>Time:</strong>{event_time}</p>
-            <p><strong class='strong-text'>Location:</strong>{location_name} ({location_link} )</p>
-            <p>{description}</p>
+            <p><strong class='strong-text'>Event:</strong>{{event.name}}</p>
+            <p><strong class='strong-text'>Date:</strong>{{event.date}}</p>
+            <p><strong class='strong-text'>Time:</strong>{{event.time}}</p>
+            <p><strong class='strong-text'>Location:</strong>{{event.location_name}} ({{event.location_link}} )</p>
+            <p>{{event.description}}</p>
         </div>
         <div class='content-section'>
         <h3>Your Registration</h3>
-            <p><strong class='strong-text'>Registrant Name:</strong>{name}
-            <strong class='strong-text'>Registrant Email:</strong>{email}</p>
-            {pricing_overview}
+            <p><strong class='strong-text'>Registrant Name:</strong>{{registration.name}}
+            <strong class='strong-text'>Registrant Email:</strong>{{registration.email}}</p>
+            {{registration.pricing_overview}}
         </div>
-        {payment_method_details}
+        {{registration.payment_method_details}}
         <div class='footer'>
             We look forward to welcoming you to AGM!
             Best regards, The Swiss Club Tokyo Event Team
-            {reservation_link}
+            {{registration.reservation_link}}
         </div>";
     }
 
@@ -1321,28 +1266,7 @@ class EventAdmin {
     }
     
     private function generate_dkim_signature($subject, $from_email, $to_email, $body) {
-        $private_key_path = EVENT_ADMIN_PATH . 'admin/keys/dkim_private.key';
-        
-        if (!file_exists($private_key_path)) {
-            return false;
-        }
-        
-        $private_key = file_get_contents($private_key_path);
-        $domain = 'swissclubtokyo.com';
-        $selector = 'wordpress';
-        
-        $body_hash = base64_encode(hash('sha256', str_replace("\r\n", "\n", rtrim($body)) . "\n", true));
-        
-        $dkim_header = "v=1; a=rsa-sha256; c=relaxed/simple; d={$domain}; s={$selector}; t=" . time() . "; h=from:to:subject:date; bh={$body_hash}; b=";
-        
-        $headers_to_sign = "from:{$from_email}\r\nto:{$to_email}\r\nsubject:{$subject}\r\ndate:" . date('r') . "\r\ndkim-signature:" . $dkim_header;
-        
-        if (openssl_sign($headers_to_sign, $signature, $private_key, OPENSSL_ALGO_SHA256)) {
-            $signature_b64 = base64_encode($signature);
-            return "DKIM-Signature: {$dkim_header}{$signature_b64}";
-        }
-        
-        return false;
+        return SCT_Event_Email_Utilities::generate_dkim_signature($subject, $from_email, $to_email, $body);
     }
     
   
@@ -1641,7 +1565,11 @@ class EventAdmin {
 
         // Loop through each table and export its data
         foreach ($tables as $table) {
-            $results = $wpdb->get_results("SELECT * FROM $table", ARRAY_A);
+            // Validate table name to prevent SQL injection
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+                continue; // Skip invalid table names
+            }
+            $results = $wpdb->get_results("SELECT * FROM `{$table}`", ARRAY_A);
             if (!empty($results)) {
                 // Write table name
                 fwrite($handle, "-- Table: $table\n");

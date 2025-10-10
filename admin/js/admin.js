@@ -2833,4 +2833,61 @@ jQuery(document).ready(function($) {
             updateTableTotals(table); 
         });
     });
+
+    // Placeholder code click functionality
+    $(document).on('click', '.variable-code', function(e) {
+        e.preventDefault();
+        var variable = $(this).text();
+        
+        // Try to copy to clipboard
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(variable).then(function() {
+                showAdminNotice('Placeholder "' + variable + '" copied to clipboard!', 'success');
+            }).catch(function() {
+                // Fallback to manual copy method
+                fallbackCopyToClipboard(variable);
+            });
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            fallbackCopyToClipboard(variable);
+        }
+        
+        // Also try to insert into active textarea/editor if possible
+        insertIntoActiveEditor(variable);
+    });
+    
+    function fallbackCopyToClipboard(text) {
+        var textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showAdminNotice('Placeholder "' + text + '" copied to clipboard!', 'success');
+        } catch(err) {
+            showAdminNotice('Could not copy placeholder. Please copy manually: ' + text, 'warning');
+        }
+        document.body.removeChild(textArea);
+    }
+    
+    function insertIntoActiveEditor(variable) {
+        // Try to insert into active textarea
+        var activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName.toLowerCase() === 'textarea' || activeElement.tagName.toLowerCase() === 'input')) {
+            var start = activeElement.selectionStart;
+            var end = activeElement.selectionEnd;
+            var value = activeElement.value;
+            activeElement.value = value.substring(0, start) + variable + value.substring(end);
+            activeElement.selectionStart = activeElement.selectionEnd = start + variable.length;
+            activeElement.focus();
+        }
+        // Try to insert into TinyMCE editor if available
+        else if (typeof tinyMCE !== 'undefined' && tinyMCE.activeEditor && !tinyMCE.activeEditor.isHidden()) {
+            tinyMCE.activeEditor.execCommand('mceInsertContent', false, variable);
+        }
+    }
 });

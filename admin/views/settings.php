@@ -20,7 +20,7 @@
                         <?php
                         wp_dropdown_pages(array(
                             'name' => 'event_registration_page',
-                            'selected' => $sct_settings['event_registration_page'],
+                            'selected' => $sct_settings['event_registration_page'] ?? 0,
                             'show_option_none' => 'Select a page',
                             'option_none_value' => '0'
                         ));
@@ -36,7 +36,7 @@
                         <?php
                         wp_dropdown_pages(array(
                             'name' => 'event_management_page',
-                            'selected' => $sct_settings['event_management_page'],
+                            'selected' => $sct_settings['event_management_page'] ?? 0,
                             'show_option_none' => 'Select a page',
                             'option_none_value' => '0'
                         ));
@@ -52,7 +52,7 @@
                         <input type="email" 
                                id="admin_email" 
                                name="admin_email" 
-                               value="<?php echo esc_attr($sct_settings['admin_email']); ?>" 
+                               value="<?php echo esc_attr($sct_settings['admin_email'] ?? get_bloginfo('admin_email')); ?>" 
                                class="regular-text">
                         <p class="description">Email address where registration notifications will be sent.</p>
                     </td>
@@ -65,10 +65,10 @@
                         <input type="text" 
                                id="currency" 
                                name="currency" 
-                               value="<?php echo esc_attr($sct_settings['currency']); ?>" 
+                               value="<?php echo esc_attr($sct_settings['currency'] ?? 'USD'); ?>" 
                                class="regular-text">
-                        <input type="hidden" id="currency_symbol" name="currency_symbol" value="<?php echo esc_attr($sct_settings['currency_symbol']); ?>">
-                        <input type="hidden" id="currency_format" name="currency_format" value="<?php echo esc_attr($sct_settings['currency_format']); ?>">
+                        <input type="hidden" id="currency_symbol" name="currency_symbol" value="<?php echo esc_attr($sct_settings['currency_symbol'] ?? '$'); ?>">
+                        <input type="hidden" id="currency_format" name="currency_format" value="<?php echo esc_attr($sct_settings['currency_format'] ?? 'symbol_before'); ?>">
                         <p class="description">Currency code (e.g., USD, EUR, GBP).</p>
                     </td>
                 </tr>
@@ -86,7 +86,7 @@
                                 5 => __('Friday'),
                                 6 => __('Saturday'),
                             ];
-                            $selected = $sct_settings['start_of_week'];
+                            $selected = $sct_settings['start_of_week'] ?? 1;
                             foreach ($days as $num => $label) {
                                 echo '<option value="' . esc_attr($num) . '"' . selected($selected, $num, false) . '>' . esc_html($label) . '</option>';
                             }
@@ -109,7 +109,7 @@
                         <input type="text" 
                                id="notification_subject" 
                                name="notification_subject" 
-                               value="<?php echo esc_attr($sct_settings['notification_subject']); ?>" 
+                               value="<?php echo esc_attr($sct_settings['notification_subject'] ?? 'New Event Registration'); ?>" 
                                class="regular-text">
                     </td>
                 </tr>
@@ -121,11 +121,38 @@
                         <textarea id="notification_template" 
                                   name="notification_template" 
                                   rows="10" 
-                                  class="large-text code"><?php echo esc_textarea($sct_settings['notification_template']); ?></textarea>
-                        <p class="description">
-                            Available placeholders: {event_name}, {name}, {email}, {guest_count}, 
-                            {registration_date}, {event_date}, {event_time}, {location_name}
-                        </p>
+                                  class="large-text code"><?php echo esc_textarea($sct_settings['notification_template'] ?? ''); ?></textarea>
+                        
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                            </div>
+                            <div class="inside">
+                                <div class="placeholder-category">
+                                    <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                    <div class="placeholder-list">
+                                        <code class="variable-code">{{registration.name}}</code>
+                                        <code class="variable-code">{{registration.email}}</code>
+                                        <code class="variable-code">{{registration.guest_count}}</code>
+                                        <code class="variable-code">{{registration.date}}</code>
+                                    </div>
+                                </div>
+                                
+                                <div class="placeholder-category">
+                                    <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                    <div class="placeholder-list">
+                                        <code class="variable-code">{{event.name}}</code>
+                                        <code class="variable-code">{{event.date}}</code>
+                                        <code class="variable-code">{{event.time}}</code>
+                                        <code class="variable-code">{{event.location_name}}</code>
+                                    </div>
+                                </div>
+                                
+                                <p class="description">
+                                    <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                </p>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -136,7 +163,7 @@
                         <input type="text" 
                                id="confirmation_subject" 
                                name="confirmation_subject" 
-                               value="<?php echo esc_attr($sct_settings['confirmation_subject']); ?>" 
+                               value="<?php echo esc_attr($sct_settings['confirmation_subject'] ?? 'Registration Confirmation'); ?>" 
                                class="regular-text">
                     </td>
                 </tr>
@@ -147,7 +174,7 @@
                     <td>
                         <?php 
                         wp_editor(
-                            $sct_settings['confirmation_template'], // Load the current template
+                            $sct_settings['confirmation_template'] ?? '', // Load the current template
                             'confirmation_template', // Unique ID for the editor
                             array(
                                 'textarea_name' => 'confirmation_template', // Name attribute for the form submission
@@ -163,31 +190,65 @@
                             )
                         );
                         ?>
-                        <div class="form-field placeholder-info">
-                            <p><strong>Available placeholders:</strong></p>
-                            <p>
-                                <code>{event_name}</code> - Event name<br>
-                                <code>{name}</code> - Registrant's name<br>
-                                <code>{email}</code> - Registrant's email<br>
-                                <code>{guest_count}</code> - Number of guests<br>
-                                <code>{registration_date}</code> - Registration date<br>
-                                <code>{event_date}</code> - Event date<br>
-                                <code>{event_time}</code> - Event time<br>
-                                <code>{location_name}</code> - Event location name<br>
-                                <code>{location_url}</code> - Event location URL<br>
-                                <code>{location_link}</code> - Event location link<br>
-                                <code>{guest_capacity}</code> - Event guest capacity<br>
-                                <code>{member_only}</code> - Member-only event<br>
-                                <code>{total_price}</code> - Total price<br>
-                                <code>{remaining_capacity}</code> - Remaining capacity<br>
-                                <code>{payment_status}</code> - Payment status<br>
-                                <code>{payment_type}</code> - Payment type<br>
-                                <code>{payment_name}</code> - Payment name<br>
-                                <code>{payment_link}</code> - Payment link<br>
-                                <code>{payment_description}</code> - Payment description<br>
-                                <code>{payment_method_details}</code> - Payment method details<br>
-                                <code>{pricing_overview}</code> - Pricing overview table<br>
-                            </p>
+                        <div class="form-field">
+                            <!-- Available Variables Postbox -->
+                            <div class="postbox">
+                                <div class="postbox-header">
+                                    <h2 class="hndle"><?php _e('Available Variables', 'sct-events'); ?></h2>
+                                </div>
+                                <div class="inside">
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Registration Data', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{registration.name}}</code>
+                                            <code class="variable-code">{{registration.email}}</code>
+                                            <code class="variable-code">{{registration.guest_count}}</code>
+                                            <code class="variable-code">{{registration.date}}</code>
+                                            <code class="variable-code">{{registration.id}}</code>
+                                            <code class="variable-code">{{registration.manage_link}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Event Information', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{event.name}}</code>
+                                            <code class="variable-code">{{event.date}}</code>
+                                            <code class="variable-code">{{event.time}}</code>
+                                            <code class="variable-code">{{event.description}}</code>
+                                            <code class="variable-code">{{event.location_name}}</code>
+                                            <code class="variable-code">{{event.location_link}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Capacity & Payment', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{capacity.total}}</code>
+                                            <code class="variable-code">{{capacity.remaining}}</code>
+                                            <code class="variable-code">{{payment.total}}</code>
+                                            <code class="variable-code">{{payment.status}}</code>
+                                            <code class="variable-code">{{payment.type}}</code>
+                                            <code class="variable-code">{{payment.method_details}}</code>
+                                            <code class="variable-code">{{payment.pricing_overview}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="placeholder-category">
+                                        <h4><?php _e('Website Information', 'sct-events'); ?></h4>
+                                        <div class="placeholder-list">
+                                            <code class="variable-code">{{website.name}}</code>
+                                            <code class="variable-code">{{website.url}}</code>
+                                            <code class="variable-code">{{date.current}}</code>
+                                            <code class="variable-code">{{date.year}}</code>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="description">
+                                        <em><?php _e('Note: Old format like {name} still works for backward compatibility', 'sct-events'); ?></em>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </td>
                 </tr>
