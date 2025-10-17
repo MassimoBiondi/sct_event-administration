@@ -297,7 +297,7 @@ class EventAdmin {
             'has_waiting_list' => isset($_POST['has_waiting_list']) ? 1 : 0,
             'external_registration' => isset($_POST['external_registration']) ? 1 : 0,
             'external_registration_url' => isset($_POST['external_registration_url']) ? esc_url_raw($_POST['external_registration_url']) : null,
-            'external_registration_text' => isset($_POST['external_registration_text']) ? sanitize_text_field($_POST['external_registration_text']) : 'Register Externally',
+            'external_registration_text' => isset($_POST['external_registration_text']) ? sanitize_text_field($_POST['external_registration_text']) : null,
             'custom_email_template' => isset($_POST['custom_email_template']) ? wp_unslash($_POST['custom_email_template']) : null,
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,

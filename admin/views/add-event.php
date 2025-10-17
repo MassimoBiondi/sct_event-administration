@@ -264,10 +264,10 @@
                                    name="external_registration" 
                                    value="1"
                                    <?php echo $event && isset($event->external_registration) && $event->external_registration ? 'checked' : ''; ?>>
-                                <p class="description">Use external registration system instead of built-in registration</p>
+                                <p class="description">Use external website for event registration</p>
                         </td>
                     </tr>
-                    <tr id="external_registration_fields" style="display: none;">
+                    <tr id="external_url_row" style="<?php echo (!$event || !isset($event->external_registration) || !$event->external_registration) ? 'display: none;' : ''; ?>">
                         <th><label for="external_registration_url">External Registration URL</label></th>
                         <td>
                             <input type="url" 
@@ -276,17 +276,19 @@
                                    class="regular-text"
                                    value="<?php echo $event && isset($event->external_registration_url) ? esc_attr($event->external_registration_url) : ''; ?>"
                                    placeholder="https://example.com/register">
-                            <p class="description">URL where users will be redirected for registration</p>
-                            
-                            <br><br>
-                            <label for="external_registration_text">Button Text</label><br>
+                                <p class="description">Enter the complete URL where participants can register for this event</p>
+                        </td>
+                    </tr>
+                    <tr id="external_text_row" style="<?php echo (!$event || !isset($event->external_registration) || !$event->external_registration) ? 'display: none;' : ''; ?>">
+                        <th><label for="external_registration_text">Button Text</label></th>
+                        <td>
                             <input type="text" 
                                    id="external_registration_text" 
                                    name="external_registration_text" 
                                    class="regular-text"
-                                   value="<?php echo $event && isset($event->external_registration_text) ? esc_attr($event->external_registration_text) : 'Register Externally'; ?>"
-                                   placeholder="Register Externally">
-                            <p class="description">Text to display on the registration button</p>
+                                   value="<?php echo $event && isset($event->external_registration_text) ? esc_attr($event->external_registration_text) : ''; ?>"
+                                   placeholder="Register for Event">
+                                <p class="description">Text to display on the external registration button (optional - defaults to "Register for Event")</p>
                         </td>
                     </tr>
                     <tr>
@@ -383,3 +385,29 @@
         </p>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const externalCheckbox = document.getElementById('external_registration');
+    const externalUrlRow = document.getElementById('external_url_row');
+    const externalTextRow = document.getElementById('external_text_row');
+    const externalUrlInput = document.getElementById('external_registration_url');
+    
+    function toggleExternalFields() {
+        if (externalCheckbox.checked) {
+            externalUrlRow.style.display = 'table-row';
+            externalTextRow.style.display = 'table-row';
+            externalUrlInput.required = true;
+        } else {
+            externalUrlRow.style.display = 'none';
+            externalTextRow.style.display = 'none';
+            externalUrlInput.required = false;
+            externalUrlInput.value = '';
+            document.getElementById('external_registration_text').value = '';
+        }
+    }
+    
+    externalCheckbox.addEventListener('change', toggleExternalFields);
+    toggleExternalFields(); // Run on page load
+});
+</script>

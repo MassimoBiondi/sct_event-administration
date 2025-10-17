@@ -62,7 +62,7 @@ function event_admin_activate() {
         payment_methods text DEFAULT NULL,
         external_registration tinyint(1) DEFAULT 0,
         external_registration_url varchar(500) DEFAULT NULL,
-        external_registration_text varchar(255) DEFAULT 'Register Externally',
+        external_registration_text varchar(255) DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
@@ -238,7 +238,7 @@ function event_admin_update_database() {
         $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
     }
     if (!in_array('external_registration_text', $columns)) {
-        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration_text varchar(255) DEFAULT 'Register Externally' AFTER external_registration_url");
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration_text varchar(255) DEFAULT NULL AFTER external_registration_url");
     }
 
     // Update the sct_events table
@@ -265,7 +265,7 @@ function event_admin_update_database() {
         payment_methods text DEFAULT NULL,
         external_registration tinyint(1) DEFAULT 0,
         external_registration_url varchar(500) DEFAULT NULL,
-        external_registration_text varchar(255) DEFAULT 'Register Externally',
+        external_registration_text varchar(255) DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     $result = dbDelta($sql);

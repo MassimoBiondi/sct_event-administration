@@ -43,18 +43,17 @@
             <p>Registration for this event is closed.</p>
         </div>
     <?php elseif (isset($event->external_registration) && $event->external_registration): ?>
-        <div class="external-registration-container">
-            <div class="external-registration-info">
-                <h3>External Registration Required</h3>
-                <p>This event uses an external registration system. Please click the button below to register.</p>
+        <div class="external-registration">
+            <div class="external-registration-notice">
+                <p><strong>External Registration Required</strong></p>
+                <p>This event uses external registration. Please click the button below to register on the event's official website.</p>
             </div>
-            <div class="external-registration-action">
+            <div class="external-registration-button">
                 <a href="<?php echo esc_url($event->external_registration_url); ?>" 
                    target="_blank" 
-                   rel="noopener noreferrer" 
-                   class="external-registration-button">
-                    <?php echo esc_html(isset($event->external_registration_text) ? $event->external_registration_text : 'Register Externally'); ?>
-                    <span class="dashicons dashicons-external" style="font-size: 16px; margin-left: 5px; vertical-align: text-top;"></span>
+                   rel="noopener noreferrer"
+                   class="uk-button uk-button-primary uk-button-large external-registration-link">
+                    <?php echo esc_html(!empty($event->external_registration_text) ? $event->external_registration_text : 'Register for Event'); ?> <span class="external-link-icon" style="margin-left: 5px;">↗</span>
                 </a>
             </div>
         </div>
