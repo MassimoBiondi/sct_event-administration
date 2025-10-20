@@ -108,7 +108,7 @@ class EventAdmin {
         
         $events = $wpdb->get_results(
             "SELECT * FROM {$wpdb->prefix}sct_events 
-            WHERE CONCAT(event_date, ' ', event_time) >= NOW()
+            WHERE COALESCE(event_end_date, event_date) >= CURDATE()
             ORDER BY event_date ASC, event_time ASC"
         );
         

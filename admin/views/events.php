@@ -65,7 +65,7 @@
                 <tr>
                     <td><?php echo esc_html($event->event_name); ?></td>
                     <td><?php echo esc_html(date('Y-m-d', strtotime($event->event_date))); ?></td>
-                    <td><?php echo esc_html(date('H:i', strtotime($event->event_time))); ?></td>
+                    <td><?php echo !empty($event->event_time) ? esc_html(date('H:i', strtotime($event->event_time))) : ''; ?></td>
                     <td><?php echo esc_html($event->location_name); ?></td>
                     <td><?php echo esc_html($event->guest_capacity); ?></td>
                     <td><?php echo esc_html($registered); ?></td>

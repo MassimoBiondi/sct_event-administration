@@ -75,7 +75,7 @@
                         </td>
                         <td class="collapse column-small"><?php echo esc_html($event->event_date); ?></td>
                         <td class="collapse column-small">
-                            <?php if ($event->event_time == '00:00:00'): ?>
+                            <?php if (empty($event->event_time) || $event->event_time == '00:00:00'): ?>
                                 &nbsp;
                             <?php else: ?>
                                 </span><?php echo esc_html($event->event_time); ?>
