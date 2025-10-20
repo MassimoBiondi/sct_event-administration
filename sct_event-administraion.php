@@ -192,12 +192,13 @@ function event_admin_init() {
     }
 }
 
-add_action('plugins_loaded', 'event_admin_init', 10);
-
 // Load text domain for translations at init action as required by WordPress 6.7.0
 add_action('init', function() {
     load_plugin_textdomain('sct-event-administration', false, dirname(plugin_basename(__FILE__)) . '/languages');
-}, 10);
+}, 5); // Priority 5 - load translations early
+
+// Initialize classes after text domain is loaded
+add_action('init', 'event_admin_init', 10);
 
 function event_admin_check_for_updates() {
     $current_version = get_option('event_admin_version', '1.0');
