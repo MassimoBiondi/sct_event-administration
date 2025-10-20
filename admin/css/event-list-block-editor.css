@@ -1,0 +1,115 @@
+/* Events List Block Editor Styles */
+
+.wp-block-sct-events-list {
+    margin: 20px 0;
+}
+
+.sct-events-list-block {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+.sct-events-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.sct-events-columns-2 .sct-events-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.sct-events-columns-3 .sct-events-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.sct-events-columns-4 .sct-events-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+    .sct-events-columns-2 .sct-events-grid,
+    .sct-events-columns-3 .sct-events-grid,
+    .sct-events-columns-4 .sct-events-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sct-event-item {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sct-event-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.sct-event-title {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.sct-event-meta {
+    font-size: 14px;
+    color: #666;
+    margin: 8px 0;
+}
+
+.sct-event-date {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.sct-event-time {
+    display: inline;
+}
+
+.sct-event-location {
+    font-size: 13px;
+    color: #555;
+    margin: 8px 0;
+}
+
+.sct-event-location a {
+    color: #0073aa;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sct-event-location a:hover {
+    color: #005a87;
+    text-decoration: underline;
+}
+
+.sct-event-capacity {
+    font-size: 13px;
+    color: #555;
+    margin: 8px 0;
+}
+
+.sct-event-description {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+
+/* Block Editor Specific Styles */
+.wp-block-sct-events-list .sct-events-list-block {
+    background-color: #fafafa;
+    border: 2px dashed #ccc;
+}
+
+.wp-block-sct-events-list .sct-event-item {
+    opacity: 0.8;
+}

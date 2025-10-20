@@ -34,16 +34,61 @@
             <tr>
                 <th><label for="event_date">Event Date / Time</label></th>
                 <td>
-                    <input type="date" 
-                           id="event_date" 
-                           name="event_date"
-                           value="<?php echo $event ? esc_attr($event->event_date) : ''; ?>"
-                           required>
-                    <input type="time" 
-                           id="event_time" 
-                           name="event_time"
-                           value="<?php echo $event ? esc_attr($event->event_time) : ''; ?>"
-                           required>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <!-- Start Date -->
+                        <div>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>Start Date:</strong>
+                                <input type="date" 
+                                       id="event_date" 
+                                       name="event_date"
+                                       value="<?php echo $event ? esc_attr($event->event_date) : ''; ?>"
+                                       required
+                                       style="width: 100%;">
+                            </label>
+                        </div>
+                        
+                        <!-- End Date -->
+                        <div>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>End Date (optional):</strong>
+                                <input type="date" 
+                                       id="event_end_date" 
+                                       name="event_end_date"
+                                       value="<?php echo $event ? esc_attr($event->event_end_date) : ''; ?>"
+                                       style="width: 100%;">
+                                <small style="display: block; margin-top: 4px; color: #666;">Multi-day events</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+                        <!-- Start Time -->
+                        <div>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>Start Time (optional):</strong>
+                                <input type="time" 
+                                       id="event_time" 
+                                       name="event_time"
+                                       value="<?php echo $event ? esc_attr($event->event_time) : ''; ?>"
+                                       style="width: 100%;">
+                                <small style="display: block; margin-top: 4px; color: #666;">Leave blank for all-day</small>
+                            </label>
+                        </div>
+                        
+                        <!-- End Time -->
+                        <div>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>End Time (optional):</strong>
+                                <input type="time" 
+                                       id="event_end_time" 
+                                       name="event_end_time"
+                                       value="<?php echo $event ? esc_attr($event->event_end_time) : ''; ?>"
+                                       style="width: 100%;">
+                                <small style="display: block; margin-top: 4px; color: #666;">Time range on same day</small>
+                            </label>
+                        </div>
+                    </div>
                 </td>
             </tr>
             <tr>

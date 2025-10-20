@@ -19,6 +19,17 @@ class EventPublic {
 
     public function enqueue_scripts() {
         global $post;
+        
+        // Enqueue block CSS if the block is used
+        if (is_a($post, 'WP_Post') && has_blocks($post->post_content)) {
+            wp_enqueue_style(
+                'sct-event-list-block-styles',
+                EVENT_ADMIN_URL . 'public/css/event-list-block.css',
+                array(),
+                EVENT_ADMIN_VERSION
+            );
+        }
+        
         if (is_a($post, 'WP_Post') && 
             (has_shortcode($post->post_content, 'event_list') || 
              has_shortcode($post->post_content, 'event_registration') ||
@@ -76,6 +87,49 @@ class EventPublic {
     //         'nonce' => wp_create_nonce('sct_event_admin_nonce')
     //     ));
     // }
+
+    /**
+     * Format event date and time range for display
+     * 
+     * @param object $event Event object with event_date, event_time, event_end_date, event_end_time
+     * @return string Formatted date/time string
+     */
+    public static function format_event_date_range($event) {
+        $has_end_date = !empty($event->event_end_date);
+        $has_start_time = !empty($event->event_time) && $event->event_time !== '00:00:00';
+        $has_end_time = !empty($event->event_end_time) && $event->event_end_time !== '00:00:00';
+
+        $start_date = date('F j, Y', strtotime($event->event_date));
+        
+        // Multi-day event
+        if ($has_end_date) {
+            $end_date = date('F j, Y', strtotime($event->event_end_date));
+            $date_range = $start_date . ' – ' . $end_date;
+            
+            // Add start time if provided
+            if ($has_start_time) {
+                $date_range .= ' at ' . date('g:i A', strtotime($event->event_time));
+            } else {
+                $date_range .= ' (all-day)';
+            }
+            
+            return $date_range;
+        }
+        
+        // Single-day event
+        $date_str = $start_date;
+        
+        if ($has_start_time) {
+            $date_str .= ' at ' . date('g:i A', strtotime($event->event_time));
+            
+            // Add end time if provided
+            if ($has_end_time) {
+                $date_str .= ' – ' . date('g:i A', strtotime($event->event_end_time));
+            }
+        }
+        
+        return $date_str;
+    }
 
     public function render_events_list($atts) {
         global $wpdb;
@@ -179,8 +233,7 @@ class EventPublic {
         $admin_subject = 'Waiting List Request: ' . $event->event_name;
         $admin_message = "Someone has requested to join the waiting list for a fully booked event.\n\n";
         $admin_message .= "Event: {$event->event_name}\n";
-        $admin_message .= "Date: {$event->event_date}\n";
-        $admin_message .= "Time: {$event->event_time}\n";
+        $admin_message .= "Date/Time: " . self::format_event_date_range($event) . "\n";
         $admin_message .= "Name: {$user_name}\n";
         $admin_message .= "Email: {$user_email}\n";
         $admin_message .= "Number of People: {$people_count}\n";
@@ -197,8 +250,7 @@ class EventPublic {
         $user_message = "Dear {$user_name},\n\n";
         $user_message .= "Thank you for joining the waiting list for {$event->event_name}.\n\n";
         $user_message .= "Event Details:\n";
-        $user_message .= "Date: {$event->event_date}\n";
-        $user_message .= "Time: {$event->event_time}\n";
+        $user_message .= "Date/Time: " . self::format_event_date_range($event) . "\n";
         $user_message .= "Location: {$event->location_name}\n";
         $user_message .= "Number of People: {$people_count}\n\n";
         $user_message .= "We will contact you if a spot becomes available.\n\n";

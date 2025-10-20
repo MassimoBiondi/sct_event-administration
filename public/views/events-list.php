@@ -23,11 +23,7 @@
                 <h1><?php echo esc_html($event->event_name); ?></h1>
                 <div>
                     <h3>
-                        <?php echo date('F j, Y', strtotime($event->event_date)); ?>
-                        <?php if ($event->event_time !== '00:00:00'): ?>
-                        &nbsp;
-                        <?php echo date('g:i A', strtotime($event->event_time)); ?>
-                        <?php endif; ?>
+                        <?php echo wp_kses_post(EventPublic::format_event_date_range($event)); ?>
                     </h3>
                     <h4>
                         <?php if ($event->location_link): ?>

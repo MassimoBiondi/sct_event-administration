@@ -31,6 +31,9 @@ class SCT_Event_Email_Placeholders extends SCT_Email_Placeholder_Base {
             '{people_count}' => 'attendee.guest_count',
             '{event_date}' => 'event.date',
             '{event_time}' => 'event.time',
+            '{event_end_date}' => 'event.end_date',
+            '{event_end_time}' => 'event.end_time',
+            '{event_date_range}' => 'event.date_range',
             '{location_name}' => 'location.name',
             '{location_url}' => 'location.url',
             '{location_link}' => 'location.link',
@@ -81,6 +84,37 @@ class SCT_Event_Email_Placeholders extends SCT_Email_Placeholder_Base {
             'category' => 'event',
             'example' => '2:00 PM',
             'required_data' => array('event_time')
+        ));
+        
+        static::register_placeholder('event.end_date', array(
+            'description' => 'Event end date (for multi-day events)',
+            'callback' => function($data) { return $data['event_end_date'] ?? ''; },
+            'category' => 'event',
+            'example' => 'August 17, 2025',
+            'required_data' => array('event_end_date')
+        ));
+        
+        static::register_placeholder('event.end_time', array(
+            'description' => 'Event end time',
+            'callback' => function($data) { return $data['event_end_time'] ?? ''; },
+            'category' => 'event',
+            'example' => '5:00 PM',
+            'required_data' => array('event_end_time')
+        ));
+        
+        static::register_placeholder('event.date_range', array(
+            'description' => 'Event date/time range (formatted for display)',
+            'callback' => function($data) { 
+                if (!isset($data['event_date'])) {
+                    return '';
+                }
+                // Create a mock event object from the data
+                $event = (object)$data;
+                return EventPublic::format_event_date_range($event);
+            },
+            'category' => 'event',
+            'example' => 'August 15 – August 17, 2025 at 2:00 PM',
+            'required_data' => array('event_date')
         ));
         
         static::register_placeholder('event.description', array(

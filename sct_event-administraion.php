@@ -3,7 +3,7 @@
 Plugin Name: SCT Event Administration
 Plugin URI: https://github.com/MassimoBiondi/sct_event-administration
 Description: This WordPress plugin manages events and event registrations with integrated email communication capabilities. It's designed to handle event management workflows including registration tracking and automated email notifications. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-Version: 2.9.7
+Version: 2.10.0
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -16,12 +16,13 @@ if (!defined('ABSPATH')) exit;
 
 define('EVENT_ADMIN_PATH', plugin_dir_path(__FILE__));
 define('EVENT_ADMIN_URL', plugin_dir_url(__FILE__));
-define('EVENT_ADMIN_VERSION', '1.9');
+define('EVENT_ADMIN_VERSION', '2.10.0');
 
 // Load email utilities and placeholder system
 require_once EVENT_ADMIN_PATH . 'includes/class-email-utilities.php';
 require_once EVENT_ADMIN_PATH . 'includes/class-placeholder-system.php';
 require_once EVENT_ADMIN_PATH . 'includes/class-github-updater.php';
+require_once EVENT_ADMIN_PATH . 'includes/class-event-list-block.php';
 
 // Create database tables on activation
 function event_admin_activate() {
@@ -43,7 +44,9 @@ function event_admin_activate() {
         id mediumint(9) NOT NULL AUTO_INCREMENT,
         event_name varchar(255) NOT NULL,
         event_date date NOT NULL,
-        event_time time NOT NULL,
+        event_time time,
+        event_end_date date,
+        event_end_time time,
         location_name varchar(255) NOT NULL,
         description longtext,
         location_link varchar(255),
@@ -216,12 +219,31 @@ function event_admin_update_database() {
 
     $charset_collate = $wpdb->get_charset_collate();
 
-    // Check if has_waiting_list column exists, if not add it
+    // Get existing columns
     $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    
+    // Add has_waiting_list column if it doesn't exist
     if (!in_array('has_waiting_list', $columns)) {
         $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN has_waiting_list tinyint(1) DEFAULT 0 AFTER by_lottery");
-        // Refresh columns list after adding new column
         $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Add event_end_date column if it doesn't exist
+    if (!in_array('event_end_date', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN event_end_date date AFTER event_time");
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Add event_end_time column if it doesn't exist
+    if (!in_array('event_end_time', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN event_end_time time AFTER event_end_date");
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Make event_time nullable if it's not already
+    $time_column = $wpdb->get_results("SHOW COLUMNS FROM {$wpdb->prefix}sct_events WHERE Field = 'event_time'");
+    if (!empty($time_column) && $time_column[0]->Null === 'NO') {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events MODIFY event_time time");
     }
 
     // Drop the sct_event_emails table if it exists

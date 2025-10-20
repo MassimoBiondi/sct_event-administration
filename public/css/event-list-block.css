@@ -1,0 +1,248 @@
+/* Events List Block Frontend Styles */
+
+.sct-events-list-block {
+    margin: 20px 0;
+}
+
+.sct-events-grid {
+    display: grid;
+    gap: 30px;
+    grid-template-columns: 1fr;
+}
+
+.sct-events-columns-2 .sct-events-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.sct-events-columns-3 .sct-events-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.sct-events-columns-4 .sct-events-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1024px) {
+    .sct-events-columns-3 .sct-events-grid,
+    .sct-events-columns-4 .sct-events-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .sct-events-columns-2 .sct-events-grid,
+    .sct-events-columns-3 .sct-events-grid,
+    .sct-events-columns-4 .sct-events-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sct-event-item {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sct-event-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-3px);
+}
+
+/* Thumbnail */
+.sct-event-thumbnail {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+}
+
+.sct-event-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Content area with padding */
+.sct-event-content {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.sct-event-title {
+    margin: 0 0 15px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #222;
+    line-height: 1.3;
+}
+
+.sct-event-meta {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sct-event-date {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sct-event-date strong {
+    color: #333;
+    font-weight: 600;
+}
+
+.sct-event-time {
+    color: #999;
+    font-size: 13px;
+}
+
+.sct-event-location {
+    font-size: 13px;
+    color: #666;
+    margin: 10px 0;
+    padding: 8px 0;
+}
+
+.sct-event-location strong {
+    color: #333;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.sct-event-location a {
+    color: #0073aa;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.sct-event-location a:hover {
+    color: #005a87;
+    text-decoration: underline;
+}
+
+.sct-event-capacity {
+    font-size: 13px;
+    color: #666;
+    margin: 10px 0;
+    padding: 8px 0;
+}
+
+.sct-event-capacity strong {
+    color: #333;
+    font-weight: 600;
+}
+
+/* Capacity Notice Styles */
+.sct-event-notice {
+    display: block;
+    margin: 0;
+    padding: 12px 20px;
+    border-radius: 0;
+    font-size: 13px;
+    font-weight: 600;
+    border-left: 4px solid;
+    border-top: 1px solid #eee;
+}
+
+.sct-event-fully-booked {
+    background-color: #fee;
+    color: #c00;
+    border-left-color: #c00;
+}
+
+.sct-event-low-capacity {
+    background-color: #ffd699;
+    color: #663300;
+    border-left-color: #ff9900;
+}
+
+.sct-event-description {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+/* Event footer with button */
+.sct-event-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    background-color: #fafafa;
+    display: flex;
+}
+
+/* Register button */
+.sct-register-button {
+    flex: 1;
+    padding: 12px 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sct-register-internal {
+    background-color: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+
+.sct-register-internal:hover {
+    background-color: #005a87;
+    border-color: #005a87;
+    text-decoration: none;
+    color: white;
+}
+
+.sct-register-external {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.sct-register-external:hover {
+    background-color: #218838;
+    border-color: #218838;
+    text-decoration: none;
+    color: white;
+}
+
+.sct-external-icon {
+    font-size: 12px;
+    display: inline-block;
+}
+
+/* No events message */
+.sct-events-list-block > p {
+    text-align: center;
+    color: #999;
+    padding: 30px;
+    font-style: italic;
+}

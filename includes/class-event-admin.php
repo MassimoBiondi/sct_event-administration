@@ -282,10 +282,44 @@ class EventAdmin {
             return;
         }
 
+        // Validate date/time fields
+        $event_date = sanitize_text_field($_POST['event_date']);
+        $event_time = sanitize_text_field($_POST['event_time']);
+        $event_end_date = isset($_POST['event_end_date']) ? sanitize_text_field($_POST['event_end_date']) : '';
+        $event_end_time = isset($_POST['event_end_time']) ? sanitize_text_field($_POST['event_end_time']) : '';
+
+        // Validation: Either event_time or event_end_date must be provided
+        if (empty($event_time) && empty($event_end_date)) {
+            wp_send_json_error(array('message' => 'Either a start time or an end date must be provided'));
+            return;
+        }
+
+        // If end date is provided, make sure it's not before start date
+        if (!empty($event_end_date) && $event_end_date < $event_date) {
+            wp_send_json_error(array('message' => 'End date cannot be before start date'));
+            return;
+        }
+
+        // If end time is provided, start time must also be provided
+        if (!empty($event_end_time) && empty($event_time)) {
+            wp_send_json_error(array('message' => 'Start time must be provided if end time is set'));
+            return;
+        }
+
+        // If both start and end time are provided on same day, end time must be after start time
+        if (!empty($event_time) && !empty($event_end_time) && empty($event_end_date)) {
+            if ($event_end_time <= $event_time) {
+                wp_send_json_error(array('message' => 'End time must be after start time'));
+                return;
+            }
+        }
+
         $event_data = array(
             'event_name' => stripslashes(sanitize_text_field($_POST['event_name'])),
-            'event_date' => sanitize_text_field($_POST['event_date']),
-            'event_time' => sanitize_text_field($_POST['event_time']),
+            'event_date' => $event_date,
+            'event_time' => !empty($event_time) ? $event_time : null,
+            'event_end_date' => !empty($event_end_date) ? $event_end_date : null,
+            'event_end_time' => !empty($event_end_time) ? $event_end_time : null,
             'location_name' => sanitize_text_field($_POST['location_name']),
             'location_link' => esc_url_raw($_POST['location_link']),
             'description' => stripslashes(wp_kses_post($_POST['event_description'])),
@@ -332,6 +366,8 @@ class EventAdmin {
             '%s', // event_name
             '%s', // event_date
             '%s', // event_time
+            '%s', // event_end_date
+            '%s', // event_end_time
             '%s', // location_name
             '%s', // location_link
             '%s', // description
