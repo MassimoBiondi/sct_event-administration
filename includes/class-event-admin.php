@@ -927,9 +927,10 @@ class EventAdmin {
         
         $current_date = current_time('Y-m-d');
         
+        // Use COALESCE to handle multi-day events with NULL time
         $where_clause = ($type === 'upcoming') 
-            ? "WHERE CONCAT(event_date, ' ', event_time) >= NOW()"
-            : "WHERE CONCAT(event_date, ' ', event_time) < NOW()";
+            ? "WHERE COALESCE(event_end_date, event_date) >= CURDATE()"
+            : "WHERE COALESCE(event_end_date, event_date) < CURDATE()";
             
         $where_clause = ($event_id !== null)
             ? $where_clause . " AND id = ".$event_id

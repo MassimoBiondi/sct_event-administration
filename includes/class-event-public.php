@@ -140,7 +140,8 @@ class EventPublic {
         ), $atts);
 
         // Build the query - only show future events (events that haven't started yet)
-        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE CONCAT(event_date, ' ', event_time) >= NOW()";
+        // Use COALESCE to handle multi-day events with NULL end_date
+        $query = "SELECT * FROM {$wpdb->prefix}sct_events WHERE COALESCE(event_end_date, event_date) >= CURDATE()";
         
         $query .= " AND (publish_date IS NULL OR publish_date <= NOW())";
         // $query .= " AND (unpublish_date IS NULL OR unpublish_date > NOW())";
