@@ -799,7 +799,6 @@ class EventPublic {
 
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
             'Reply-To: ' . $from_email,
             'Return-Path: events@swissclubtokyo.com'
@@ -812,27 +811,12 @@ class EventPublic {
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
             'From: Event @ ' . get_bloginfo('name') . ' <' . $from_email . '>',
             'Return-Path: events@swissclubtokyo.com'
         );
         if ($notification_dkim_header) {
             $notification_headers[] = $notification_dkim_header;
         }
-
-        // === DISABLE ALL WORDPRESS EMAIL PROCESSING FILTERS ===
-        // Remove filters that alter HTML content, convert emoji, or re-encode
-        $removed_filters = array();
-        
-        // Remove emoji conversion filter
-        $emoji_priority = has_filter('wp_mail_content', 'wp_staticize_emoji_for_email');
-        if ($emoji_priority !== false) {
-            remove_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $emoji_priority);
-            $removed_filters['emoji'] = $emoji_priority;
-        }
-        
-        // Add filter to force 8bit encoding on PHPMailer BEFORE mail is sent
-        add_action('phpmailer_init', array($this, 'force_email_8bit_encoding'), 10, 1);
 
         // Send the confirmation email
         $confirmation_sent = wp_mail(
@@ -841,33 +825,10 @@ class EventPublic {
             $confirmation_message_html,
             $confirmation_headers
         );
-        
-        // Remove the encoding filter
-        remove_action('phpmailer_init', array($this, 'force_email_8bit_encoding'));
-        
-        // === RE-ENABLE WORDPRESS FILTERS ===
-        foreach ($removed_filters as $filter_name => $priority) {
-            if ($filter_name === 'emoji') {
-                add_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $priority);
-            }
-        }
         error_log('Confirmation email data: ' . $confirmation_to . ' | ' . $confirmation_subject . ' | ' . $confirmation_message_html);
         error_log('Confirmation email headers: ' . print_r($confirmation_headers, true));
 
         $this->log_email($event_data['id'], 'confirmation', $registration_data['email'], $confirmation_subject, $confirmation_message_html, $confirmation_sent ? 'sent' : 'failed');
-
-        // === DISABLE WORDPRESS FILTERS FOR NOTIFICATION EMAIL ===
-        $removed_filters_notify = array();
-        
-        // Remove emoji conversion filter
-        $emoji_priority_notify = has_filter('wp_mail_content', 'wp_staticize_emoji_for_email');
-        if ($emoji_priority_notify !== false) {
-            remove_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $emoji_priority_notify);
-            $removed_filters_notify['emoji'] = $emoji_priority_notify;
-        }
-        
-        // Add filter to force 8bit encoding on PHPMailer BEFORE mail is sent
-        add_action('phpmailer_init', array($this, 'force_email_8bit_encoding'), 10, 1);
 
         // Send the admin notification email
         $notification_sent = wp_mail(
@@ -876,16 +837,6 @@ class EventPublic {
             $notification_message_html,
             $notification_headers
         );
-        
-        // Remove the encoding filter
-        remove_action('phpmailer_init', array($this, 'force_email_8bit_encoding'));
-        
-        // === RE-ENABLE WORDPRESS FILTERS ===
-        foreach ($removed_filters_notify as $filter_name => $priority) {
-            if ($filter_name === 'emoji') {
-                add_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $priority);
-            }
-        }
         $this->log_email($event_data['id'], 'notification', $sct_settings['admin_email'], $notification_subject, $notification_message_html, $notification_sent ? 'sent' : 'failed');
 
         // Log email statuses
@@ -1535,26 +1486,6 @@ class EventPublic {
         error_log('Repaired style length: ' . strlen($repaired_style));
         
         return $repaired_template;
-    }
-
-    /**
-     * FORCE 8BIT EMAIL ENCODING
-     * 
-     * PHPMailer callback to force Content-Transfer-Encoding to 8bit
-     * This prevents the mail relay from converting to quoted-printable
-     * 
-     * @param object $phpmailer PHPMailer instance
-     */
-    public function force_email_8bit_encoding($phpmailer) {
-        $phpmailer->ContentTransferEncoding = '8bit';
-        $phpmailer->Encoding = '8bit';
-        
-        // Also ensure the body encoding is not changed
-        if (property_exists($phpmailer, 'Body')) {
-            // Body is already set, we just need to ensure encoding
-        }
-        
-        error_log('PHPMailer encoding forced to 8bit');
     }
 
 }

@@ -3,7 +3,7 @@
 Plugin Name: SCT Events
 Plugin URI: https://github.com/MassimoBiondi/sct_event-administration
 Description: Advanced WordPress event management plugin with multi-day events, event registrations, integrated email notifications, and a Gutenberg Events List block. Features include event capacity management, lottery-based registration, waiting lists, and registration email templates with dynamic placeholders. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-Version: 2.10.9
+Version: 2.11.0
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) exit;
 
 define('EVENT_ADMIN_PATH', plugin_dir_path(__FILE__));
 define('EVENT_ADMIN_URL', plugin_dir_url(__FILE__));
-define('EVENT_ADMIN_VERSION', '2.10.9');
+define('EVENT_ADMIN_VERSION', '2.11.0');
 
 // Load email utilities and placeholder system
 require_once EVENT_ADMIN_PATH . 'includes/class-email-utilities.php';
