@@ -1,5 +1,5 @@
 <div class="event-registration-page">
-    <div class="event-details">
+    <div class="event-details" style="text-align: center;">
         <h2><?php echo esc_html($event->event_name); ?></h2>
         <div class="event-info">
             <p class="event-date">
@@ -35,7 +35,27 @@
     </div>
     <?php
         $sct_settings = get_option('event_admin_settings', []);
+        if (!is_array($sct_settings)) {
+            $sct_settings = [];
+        }
+        // Ensure required keys exist with defaults
+        if (!isset($sct_settings['currency_symbol']) || empty($sct_settings['currency_symbol'])) {
+            $sct_settings['currency_symbol'] = '$';
+        }
+        // IMPORTANT: Use isset() not empty() because 0 is a valid value for JPY (no decimals)
+        if (!isset($sct_settings['currency_format'])) {
+            $sct_settings['currency_format'] = 2; // Default 2 decimals
+        }
         $is_unpublished = !empty($event->unpublish_date) && strtotime($event->unpublish_date) <= time();
+        
+        // Helper function to format prices with proper decimal places
+        $format_price = function($price, $settings) {
+            $symbol = isset($settings['currency_symbol']) ? $settings['currency_symbol'] : '$';
+            $decimals = intval($settings['currency_format'] ?? 2);
+            // Use comma for thousands separator and period for decimal
+            $formatted_price = number_format(floatval($price), $decimals, '.', ',');
+            return $symbol . $formatted_price;
+        };
     ?>
 
     <?php if ($is_unpublished): ?>
@@ -86,31 +106,103 @@
                     </div>
                 </div>
 
+                <?php if (!empty($event->collect_phone)): ?>
+                <div class="uk-margin">
+                    <label for="phone">Phone:</label>
+                    <div class="uk-form-controls">
+                        <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($event->collect_company)): ?>
+                <div class="uk-margin">
+                    <label for="company_name">Company Name:</label>
+                    <div class="uk-form-controls">
+                        <input type="text" id="company_name" name="company_name" placeholder="Your company or organization">
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($event->collect_address)): ?>
+                <div class="uk-margin">
+                    <label for="address">Address:</label>
+                    <div class="uk-form-controls">
+                        <textarea id="address" name="address" placeholder="Street address, Building, Apartment, etc." rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="uk-grid-small" uk-grid>
+                    <div class="uk-width-1-2@m">
+                        <div class="uk-margin">
+                            <label for="city">City:</label>
+                            <div class="uk-form-controls">
+                                <input type="text" id="city" name="city" placeholder="City">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="uk-width-1-2@m">
+                        <div class="uk-margin">
+                            <label for="postal_code" style="text-align: right;">Postal Code:</label>
+                            <div class="uk-form-controls">
+                                <input type="text" id="postal_code" name="postal_code" placeholder="Postal code">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="uk-margin">
+                    <label for="country">Country:</label>
+                    <div class="uk-form-controls">
+                        <input type="text" id="country" name="country" placeholder="Country">
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div id="pricing-options-container">
                     <h4 class="uk-heading-divider">Attendees</h4>
+                    
+                    <!-- Display pricing description if available and not blank -->
+                    <?php if (!empty($event->pricing_description) && !empty(trim($event->pricing_description))) : ?>
+                        <div class="pricing-description uk-margin-bottom" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid var(--red-color, #b71c1c);">
+                            <?php echo wp_kses_post($event->pricing_description); ?>
+                        </div>
+                    <?php endif; ?>
+                    
                     <?php if (!empty($event->pricing_options)) :
                         $pricing_options = maybe_unserialize($event->pricing_options);
-                        foreach ($pricing_options as $index => $option) : ?>
+                        if (is_array($pricing_options) && !empty($pricing_options)) :
+                            $pricing_index = 0;
+                            foreach ($pricing_options as $option) : 
+                                // Ensure $option is an array with required keys
+                                if (!is_array($option)) {
+                                    continue;
+                                }
+                                $option_name = isset($option['name']) ? $option['name'] : '';
+                                $option_price = isset($option['price']) ? $option['price'] : 0;
+                            ?>
                             <div class="pricing-option uk-margin">
-                                <label for="guest_count_<?php echo esc_attr($index); ?>">
-                                    <?php echo esc_html($option['name']); ?> (<?php echo esc_html($sct_settings['currency_symbol'] . $option['price']); ?>):
+                                <label for="guest_count_<?php echo esc_attr($pricing_index); ?>">
+                                    <?php echo esc_html($option_name); ?> (<?php echo esc_html($format_price($option_price, $sct_settings)); ?>):
                                 </label>
                                 <div class="uk-form-controls">
                                     <input type="number" 
-                                        id="guest_count_<?php echo esc_attr($index); ?>" 
-                                        name="guest_details[<?php echo esc_attr($index); ?>][count]" 
+                                        id="guest_count_<?php echo esc_attr($pricing_index); ?>" 
+                                        name="guest_details[<?php echo esc_attr($pricing_index); ?>][count]" 
                                         class="small-text guest-count" 
                                         min="0" 
                                         placeholder="0">
                                     <input type="hidden" 
-                                        name="guest_details[<?php echo esc_attr($index); ?>][name]" 
-                                        value="<?php echo esc_attr($option['name']); ?>">
+                                        name="guest_details[<?php echo esc_attr($pricing_index); ?>][name]" 
+                                        value="<?php echo esc_attr($option_name); ?>">
                                     <input type="hidden" 
-                                        name="guest_details[<?php echo esc_attr($index); ?>][price]" 
-                                        value="<?php echo esc_attr($option['price']); ?>">
+                                        name="guest_details[<?php echo esc_attr($pricing_index); ?>][price]" 
+                                        value="<?php echo esc_attr($option_price); ?>">
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                            <?php $pricing_index++; ?>
+                        <?php endforeach;
+                        endif; ?>
                     <?php else : ?>
                         <div class="uk-margin">
                             <label for="guest_count">Number of Guests:</label>
@@ -128,32 +220,54 @@
                 // Always show goods_services if available, regardless of pricing_options
                 if (!empty($event->goods_services)) :
                     $goods_services = maybe_unserialize($event->goods_services);
-                    echo  '<h4 class="uk-heading-divider">Extras</h4>';
-                    foreach ($goods_services as $index => $option) : ?>
+                    if (is_array($goods_services) && !empty($goods_services)) :
+                        echo  '<h4 class="uk-heading-divider">Extras</h4>';
+                        
+                        // Display goods/services description if available and not blank
+                        if (!empty($event->goods_services_description) && !empty(trim($event->goods_services_description))) : ?>
+                            <div class="goods-services-description uk-margin-bottom" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid var(--red-color, #b71c1c);">
+                                <?php echo wp_kses_post($event->goods_services_description); ?>
+                            </div>
+                        <?php endif;
+                        
+                        $goods_index = 0;
+                        foreach ($goods_services as $option) : 
+                            // Ensure $option is an array with required keys
+                            if (!is_array($option)) {
+                                $goods_index++;
+                                continue;
+                            }
+                            $option_name = isset($option['name']) ? $option['name'] : '';
+                            $option_price = isset($option['price']) ? $option['price'] : 0;
+                            $option_limit = isset($option['limit']) ? intval($option['limit']) : 0;
+                        ?>
                         <div class="goods-service-option uk-margin">
-                            <label for="goods_service_<?php echo esc_attr($index); ?>">
-                                <?php echo esc_html($option['name']); ?> (<?php echo esc_html($sct_settings['currency_symbol'] . $option['price']); ?>):
+                            <label for="goods_service_<?php echo esc_attr($goods_index); ?>">
+                                <?php echo esc_html($option_name); ?> (<?php echo esc_html($format_price($option_price, $sct_settings)); ?>):
                             </label>
                             <div class="uk-form-controls">
-                                <?php if ($option['limit'] == 1) : ?>
+                                <?php if ($option_limit == 1) : ?>
                                     <input type="checkbox" 
                                            class="uk-checkbox" 
-                                           id="goods_service_<?php echo esc_attr($index); ?>" 
-                                           name="goods_services[<?php echo esc_attr($index); ?>][count]">
+                                           id="goods_service_<?php echo esc_attr($goods_index); ?>" 
+                                           name="goods_services[<?php echo esc_attr($goods_index); ?>][count]"
+                                           value="1">
                                 <?php else : ?>
                                     <input type="number" 
-                                           id="goods_service_<?php echo esc_attr($index); ?>" 
-                                           name="goods_services[<?php echo esc_attr($index); ?>][count]" 
+                                           id="goods_service_<?php echo esc_attr($goods_index); ?>" 
+                                           name="goods_services[<?php echo esc_attr($goods_index); ?>][count]" 
                                            class="small-text" 
                                            min="0" 
-                                           max="<?php echo esc_attr($option['limit'] > 0 ? $option['limit'] : ''); ?>" 
+                                           max="<?php echo esc_attr($option_limit > 0 ? $option_limit : ''); ?>" 
                                            placeholder="0">
                                 <?php endif; ?>
-                                <input type="hidden" name="goods_services[<?php echo esc_attr($index); ?>][name]" value="<?php echo esc_attr($option['name']); ?>">
-                                <input type="hidden" name="goods_services[<?php echo esc_attr($index); ?>][price]" value="<?php echo esc_attr($option['price']); ?>">
+                                <input type="hidden" name="goods_services[<?php echo esc_attr($goods_index); ?>][name]" value="<?php echo esc_attr($option_name); ?>">
+                                <input type="hidden" name="goods_services[<?php echo esc_attr($goods_index); ?>][price]" value="<?php echo esc_attr($option_price); ?>">
                             </div>
                         </div>
+                        <?php $goods_index++; ?>
                     <?php endforeach;
+                    endif;
                 endif; ?>
 
                 <div class="uk-margin" id="pricing-overview">
@@ -175,38 +289,158 @@
                                 <td colspan="3"><strong>Total Price</strong></td>
                                 <td id="total-price" 
                                     style="text-align: right;" 
-                                    data-currency-symbol="<?php echo esc_attr($sct_settings['currency_symbol']); ?>" 
-                                    data-currency-format="<?php echo esc_attr($sct_settings['currency_format']); ?>">
-                                    <?php echo esc_html($sct_settings['currency_symbol']); ?>
+                                    data-currency-symbol="<?php echo esc_attr(isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : ''); ?>" 
+                                    data-currency-format="<?php echo esc_attr(isset($sct_settings['currency_format']) ? $sct_settings['currency_format'] : ''); ?>">
+                                    <?php echo esc_html(isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : ''); ?>
                                 </td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                <?php if (!empty($event->pricing_options) || !empty($event->goods_services)) : ?>
-                    <h4 class="uk-heading-divider">Payment Method</h4>
-                    <?php if (!empty($event->payment_methods)) :
-                        $payment_methods = maybe_unserialize($event->payment_methods);
-                        foreach ($payment_methods as $index => $method) : ?>
-                            <div class="payment-method-option uk-margin">
-                                <input type="radio"
-                                       id="payment_method_<?php echo $index; ?>"
-                                       name="payment_method"
-                                       value="<?php echo esc_attr($method['type']); ?>"
-                                       required
-                                       <?php if (count($payment_methods) === 1) echo 'checked'; ?>>
-                                <label for="payment_method_<?php echo $index; ?>">
-                                    <?php echo esc_html($method['description']); ?>
-                                    <?php if (!empty($method['transfer_details'])) : ?>
-                                        <span uk-icon="info" uk-tooltip="<?php echo nl2br(esc_html($method['transfer_details'])); ?>"></span>
-                                    <?php else : ?>
-                                        <span uk-icon="info" uk-tooltip="Instruction will be included in the Email"></span>
-                                    <?php endif; ?>
-                                </label>
+                <?php if (!empty($event->payment_methods)) :
+                    $payment_methods = maybe_unserialize($event->payment_methods);
+                    if (!empty($payment_methods)) : ?>
+                        <h4 class="uk-heading-divider">Payment Method</h4>
+                        
+                        <!-- Display payment methods description if available and not blank -->
+                        <?php if (!empty($event->payment_methods_description) && !empty(trim($event->payment_methods_description))) : ?>
+                            <div class="payment-methods-description uk-margin-bottom" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid var(--red-color, #b71c1c);">
+                                <?php echo wp_kses_post($event->payment_methods_description); ?>
                             </div>
-                        <?php endforeach;
-                    endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php foreach ($payment_methods as $index => $method) : ?>
+                            <div class="uk-margin">
+                                <!-- Only show radio button if multiple payment methods -->
+                                <?php if (count($payment_methods) > 1) : ?>
+                                    <label class="uk-form-label">
+                                        <?php echo esc_html($method['description']); ?>
+                                    </label>
+                                    <div class="uk-form-controls">
+                                        <input type="radio"
+                                               id="payment_method_<?php echo $index; ?>"
+                                               name="payment_method"
+                                               value="<?php echo esc_attr($method['type']); ?>"
+                                               required
+                                               <?php if ($index === 0) echo 'checked'; ?>>
+                                        <label for="payment_method_<?php echo $index; ?>" style="display: inline; margin-left: 8px;">
+                                            Select this option
+                                        </label>
+                                    </div>
+                                <?php else : ?>
+                                    <!-- Single payment method - hidden radio, auto-selected -->
+                                    <label class="uk-form-label">
+                                        <?php echo esc_html($method['description']); ?>
+                                    </label>
+                                    <input type="radio"
+                                           id="payment_method_<?php echo $index; ?>"
+                                           name="payment_method"
+                                           value="<?php echo esc_attr($method['type']); ?>"
+                                           required
+                                           checked
+                                           style="display: none;">
+                                <?php endif; ?>
+
+                                <!-- Show transfer details as paragraph -->
+                                <?php if (!empty($method['transfer_details'])) : ?>
+                                    <div class="uk-form-controls">
+                                        <p><?php echo nl2br(esc_html($method['transfer_details'])); ?></p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+                <!-- Dynamic Comment Fields - Moved to End -->
+                <?php if (!empty($event->comment_fields)):
+                    $comment_fields = json_decode($event->comment_fields, true);
+                    if (!empty($comment_fields)): ?>
+                        <div id="comment-fields-section" class="uk-margin" style="border-top: 2px solid #e5e5e5; padding-top: 20px; margin-top: 20px;">
+                            <h4 class="uk-heading-divider">Additional Information</h4>
+                            <?php foreach ($comment_fields as $field): ?>
+                                <?php if ($field['type'] === 'textarea'): ?>
+                                    <div class="uk-margin">
+                                        <label for="<?php echo esc_attr($field['id']); ?>">
+                                            <?php echo esc_html($field['label']); ?>
+                                            <?php if ($field['required']): ?>
+                                                <span class="required" style="color: #e74c3c;">*</span>
+                                            <?php endif; ?>
+                                        </label>
+                                        <div class="uk-form-controls">
+                                            <textarea id="<?php echo esc_attr($field['id']); ?>" 
+                                                      name="comments[<?php echo esc_attr($field['id']); ?>]"
+                                                      rows="<?php echo esc_attr($field['rows'] ?? 3); ?>"
+                                                      placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"
+                                                      <?php echo $field['required'] ? 'required' : ''; ?>></textarea>
+                                        </div>
+                                    </div>
+                                <?php elseif ($field['type'] === 'text'): ?>
+                                    <div class="uk-margin">
+                                        <label for="<?php echo esc_attr($field['id']); ?>">
+                                            <?php echo esc_html($field['label']); ?>
+                                            <?php if ($field['required']): ?>
+                                                <span class="required" style="color: #e74c3c;">*</span>
+                                            <?php endif; ?>
+                                        </label>
+                                        <div class="uk-form-controls">
+                                            <input type="text" 
+                                                   id="<?php echo esc_attr($field['id']); ?>"
+                                                   name="comments[<?php echo esc_attr($field['id']); ?>]"
+                                                   placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"
+                                                   <?php echo $field['required'] ? 'required' : ''; ?>>
+                                        </div>
+                                    </div>
+                                <?php elseif ($field['type'] === 'checkbox'): ?>
+                                    <div class="uk-margin">
+                                        <label class="uk-form-label">
+                                            <?php echo esc_html($field['label']); ?>
+                                            <?php if ($field['required']): ?>
+                                                <span class="required" style="color: #e74c3c;">*</span>
+                                            <?php endif; ?>
+                                        </label>
+                                        <div class="uk-form-controls">
+                                            <input type="checkbox" 
+                                                   id="<?php echo esc_attr($field['id']); ?>"
+                                                   name="comments[<?php echo esc_attr($field['id']); ?>]"
+                                                   value="1"
+                                                   <?php echo $field['required'] ? 'required' : ''; ?>>
+                                            <span style="display: inline; margin-left: 8px;">
+                                                <?php echo wp_kses_post($field['placeholder'] ?? 'Check if applicable'); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                <?php elseif ($field['type'] === 'select'): ?>
+                                    <div class="uk-margin">
+                                        <label for="<?php echo esc_attr($field['id']); ?>" class="uk-form-label">
+                                            <?php echo esc_html($field['label']); ?>
+                                            <?php if ($field['required']): ?>
+                                                <span class="required" style="color: #e74c3c;">*</span>
+                                            <?php endif; ?>
+                                        </label>
+                                        <div class="uk-form-controls">
+                                            <select id="<?php echo esc_attr($field['id']); ?>"
+                                                    name="comments[<?php echo esc_attr($field['id']); ?>]"
+                                                    <?php echo $field['required'] ? 'required' : ''; ?>>
+                                                <option value="">Select an option...</option>
+                                                <?php if (!empty($field['options']) && is_array($field['options'])): ?>
+                                                    <?php foreach ($field['options'] as $option): ?>
+                                                        <option value="<?php echo esc_attr($option); ?>">
+                                                            <?php echo esc_html($option); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </select>
+                                        </div>
+                                        <?php if (!empty($field['placeholder'])): ?>
+                                            <p class="description"><?php echo esc_html($field['placeholder']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <div class="uk-margin">

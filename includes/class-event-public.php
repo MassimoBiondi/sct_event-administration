@@ -36,10 +36,12 @@ class EventPublic {
              has_shortcode($post->post_content, 'reservations_management')
             )) {
             
+            // Enqueue event registration form styles with theme CSS as dependency
+            // This ensures our styles load AFTER the theme's UIKit CSS so overrides work
             wp_enqueue_style(
                 'event-public-style',
                 EVENT_ADMIN_URL . 'public/css/public.css',
-                array(),
+                array('uikit-css-css', 'jss-classic-style-css'), // Load after theme CSS
                 '1.0.0'
             );
 
@@ -55,6 +57,14 @@ class EventPublic {
                 'event-public-script',
                 EVENT_ADMIN_URL . 'public/js/public.js',
                 array('jquery'),
+                EVENT_ADMIN_VERSION,
+                true);
+
+            // Enqueue UIKit form enhancer script
+            wp_enqueue_script(
+                'uikit-form-enhancer',
+                EVENT_ADMIN_URL . 'public/js/uikit-form-enhancer.js',
+                array(),
                 EVENT_ADMIN_VERSION,
                 true);
 
@@ -349,6 +359,13 @@ class EventPublic {
             $event_id = isset($_POST['event_id']) ? intval($_POST['event_id']) : 0;
             $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
             $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+            $phone = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
+            $company_name = isset($_POST['company_name']) ? sanitize_text_field($_POST['company_name']) : '';
+            $address = isset($_POST['address']) ? sanitize_text_field($_POST['address']) : '';
+            $city = isset($_POST['city']) ? sanitize_text_field($_POST['city']) : '';
+            $postal_code = isset($_POST['postal_code']) ? sanitize_text_field($_POST['postal_code']) : '';
+            $country = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
+            $comments = isset($_POST['comments']) && is_array($_POST['comments']) ? array_map('sanitize_text_field', $_POST['comments']) : array();
             $guest_details = isset($_POST['guest_details']) ? $_POST['guest_details'] : null;
             $goods_services = isset($_POST['goods_services']) ? $_POST['goods_services'] : null; // Handle goods/services
             $guest_count = isset($_POST['guest_count']) ? intval($_POST['guest_count']) : 0;
@@ -394,28 +411,51 @@ class EventPublic {
                 return;
             }
 
-            error_log('Goods Service: ' . $goods_services);
-            // Process goods/services
+            error_log('Full POST data: ' . print_r($_POST, true));
+            error_log('Goods Service from POST: ' . print_r($_POST['goods_services'] ?? 'NOT SET', true));
+            error_log('Goods Service variable: ' . $goods_services);
+            // Process goods/services - build proper array with all details
             if (!empty($_POST['goods_services']) && is_array($_POST['goods_services'])) {
+                error_log('Processing goods_services array...');
                 $processed_goods_services = array_map(function ($service) {
-                    return isset($service['count']) ? intval($service['count']) : 0;
+                    error_log('Service data: ' . print_r($service, true));
+                    // Handle checkbox values - "on" or "1" should become 1, empty strings/0 should be 0
+                    $count = isset($service['count']) ? $service['count'] : 0;
+                    if ($count === 'on' || $count === '1') {
+                        $count = 1;
+                    } else {
+                        $count = intval($count);
+                    }
+                    return [
+                        'name' => isset($service['name']) ? sanitize_text_field($service['name']) : '',
+                        'price' => isset($service['price']) ? floatval($service['price']) : 0,
+                        'count' => $count,
+                    ];
                 }, $_POST['goods_services']);
+                error_log('Processed goods services: ' . print_r($processed_goods_services, true));
             } else {
+                error_log('No goods_services or not an array');
                 $processed_goods_services = array();
             }
 
 
             // Serialize guest details and goods/services for storage
             // $guest_details_serialized = maybe_serialize($processed_guest_details);
-            // $goods_services_serialized = maybe_serialize($processed_goods_services);
             $guest_details_serialized = maybe_serialize($guest_details);
-            $goods_services_serialized = maybe_serialize($goods_services);
+            $goods_services_serialized = maybe_serialize($processed_goods_services);
 
             // Prepare registration data
             $registration_data = array(
                 'event_id' => $event_id,
                 'name' => $name,
                 'email' => $email,
+                'phone' => $phone,
+                'company_name' => $company_name,
+                'address' => $address,
+                'city' => $city,
+                'postal_code' => $postal_code,
+                'country' => $country,
+                'comments' => !empty($comments) ? maybe_serialize($comments) : null,
                 'guest_details' => $guest_details_serialized,
                 'goods_services' => $goods_services_serialized,
                 'guest_count' => $total_guests,
@@ -432,7 +472,7 @@ class EventPublic {
             $result = $wpdb->insert(
                 $wpdb->prefix . 'sct_event_registrations',
                 $registration_data,
-                array('%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s')
+                array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s')
             );
 
             if ($result === false) {
@@ -498,12 +538,37 @@ class EventPublic {
             $registration_data['event_id']
         ), ARRAY_A);
 
-        // Use custom email template if available
-        $confirmation_template = !empty($event_data['custom_email_template']) ? $event_data['custom_email_template'] : $sct_settings['confirmation_template'];
+        // Use custom email template if available, and repair any corruption
+        $confirmation_template = !empty($event_data['custom_email_template']) 
+            ? self::repair_corrupted_template($event_data['custom_email_template']) 
+            : $sct_settings['confirmation_template'];
         $notification_template = $sct_settings['notification_template'];
 
         // Prepare data for placeholder replacement
         $placeholder_data = array_merge($registration_data, $event_data);
+
+        // Map database field names to placeholder-compatible names
+        // This allows templates to use both database names and placeholder system names
+        $placeholder_data['event_title'] = $placeholder_data['event_name'] ?? '';
+        $placeholder_data['event.title'] = $placeholder_data['event_name'] ?? '';
+        $placeholder_data['attendee_name'] = $placeholder_data['name'] ?? '';
+        $placeholder_data['attendee_email'] = $placeholder_data['email'] ?? '';
+        $placeholder_data['attendee_guest_count'] = $placeholder_data['guest_count'] ?? '';
+        $placeholder_data['registration_id'] = $placeholder_data['registration_id'] ?? $placeholder_data['id'] ?? '';
+        $placeholder_data['id'] = $placeholder_data['registration_id'] ?? $placeholder_data['id'] ?? '';
+        $placeholder_data['registration_name'] = $placeholder_data['name'] ?? '';
+        $placeholder_data['registration_email'] = $placeholder_data['email'] ?? '';
+        $placeholder_data['registration_date'] = $placeholder_data['registration_date'] ?? current_time('F j, Y');
+        $placeholder_data['location.name'] = $placeholder_data['location_name'] ?? '';
+        $placeholder_data['website_name'] = get_bloginfo('name');
+        $placeholder_data['website_url'] = get_bloginfo('url');
+        $placeholder_data['current_date'] = current_time('F j, Y');
+        $placeholder_data['current_year'] = date('Y');
+        $placeholder_data['date.year'] = date('Y');
+        $placeholder_data['admin_email'] = $event_data['admin_email'] ?? get_option('admin_email');
+        
+        // Add additional fields dynamically if they exist
+        $placeholder_data = $this->enrich_additional_fields($placeholder_data, $registration_data, $event_data);
 
         // Initialize pricing breakdown and total price
         $pricing_breakdown = '';
@@ -647,6 +712,10 @@ class EventPublic {
             $confirmation_template,
             $placeholder_data
         );
+        
+        // === CLEAN UP UNREPLACED PLACEHOLDERS ===
+        // Remove any placeholders that weren't replaced (empty values)
+        $confirmation_message = $this->clean_empty_placeholders($confirmation_message);
 
         $notification_subject = $this->replace_email_placeholders(
             $sct_settings['notification_subject'],
@@ -656,6 +725,10 @@ class EventPublic {
             $notification_template,
             $placeholder_data
         );
+        
+        // === CLEAN UP UNREPLACED PLACEHOLDERS ===
+        // Remove any placeholders that weren't replaced (empty values)
+        $notification_message = $this->clean_empty_placeholders($notification_message);
 
         // Add the reservation link to the confirmation email
         $settings = get_option('event_admin_settings', []);
@@ -667,22 +740,33 @@ class EventPublic {
 
         // Create HTML version with proper link
         $confirmation_message_html = str_replace(
-            '{reservation_link}',
+            array('{{reservation_link}}', '{reservation_link}'),
             '<a href="' . esc_url($reservation_url) . '">Manage your registration</a>',
             $confirmation_message
         );
 
-        $confirmation_css_path = EVENT_ADMIN_PATH . 'admin/templates/confirmation_css.html';
-
-        // Check if the file exists before reading it
-        if (file_exists($confirmation_css_path)) {
-            $confirmation_css_content = file_get_contents($confirmation_css_path);
+        // Detect if this is an HTML template or plain text
+        // HTML templates contain HTML tags and should not be wrapped or processed with wpautop()
+        $is_html_template = preg_match('/<[a-z]+.*?>/i', $confirmation_message_html);
+        
+        if ($is_html_template) {
+            // This is an HTML template - use it as-is without wrapping
+            // No safe_autop() conversion, no CSS wrapper added
+            // The template already contains complete HTML structure
         } else {
-            $confirmation_css_content = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Registration Confirmed: {event_name}!</title></head><body><div class="email-container">'; // Fallback to an empty string if the file doesn't exist
-        }
+            // This is plain text - add HTML wrapper and styling
+            $confirmation_css_path = EVENT_ADMIN_PATH . 'admin/templates/confirmation_css.html';
 
-        $confirmation_message_html = wpautop($confirmation_message_html);
-        $confirmation_message_html = $confirmation_css_content . ($confirmation_message_html) . '</div></body></html>';
+            // Check if the file exists before reading it
+            if (file_exists($confirmation_css_path)) {
+                $confirmation_css_content = file_get_contents($confirmation_css_path);
+            } else {
+                $confirmation_css_content = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Registration Confirmed!</title></head><body><div class="email-container">'; // Fallback
+            }
+
+            $confirmation_message_html = $this->safe_autop($confirmation_message_html);
+            $confirmation_message_html = $confirmation_css_content . ($confirmation_message_html) . '</div></body></html>';
+        }
 
         $notification_message_html = nl2br($notification_message);
         $notification_message_html = '<html><head><meta charset="UTF-8"></head><body>' . $notification_message_html . '</body></html>';
@@ -715,6 +799,7 @@ class EventPublic {
 
         $confirmation_headers = array(
             'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
             'From: ' . get_bloginfo('name') . ' <' . $from_email . '>',
             'Reply-To: ' . $from_email,
             'Return-Path: events@swissclubtokyo.com'
@@ -727,12 +812,27 @@ class EventPublic {
 
         $notification_headers = array(
             'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
             'From: Event @ ' . get_bloginfo('name') . ' <' . $from_email . '>',
             'Return-Path: events@swissclubtokyo.com'
         );
         if ($notification_dkim_header) {
             $notification_headers[] = $notification_dkim_header;
         }
+
+        // === DISABLE ALL WORDPRESS EMAIL PROCESSING FILTERS ===
+        // Remove filters that alter HTML content, convert emoji, or re-encode
+        $removed_filters = array();
+        
+        // Remove emoji conversion filter
+        $emoji_priority = has_filter('wp_mail_content', 'wp_staticize_emoji_for_email');
+        if ($emoji_priority !== false) {
+            remove_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $emoji_priority);
+            $removed_filters['emoji'] = $emoji_priority;
+        }
+        
+        // Add filter to force 8bit encoding on PHPMailer BEFORE mail is sent
+        add_action('phpmailer_init', array($this, 'force_email_8bit_encoding'), 10, 1);
 
         // Send the confirmation email
         $confirmation_sent = wp_mail(
@@ -741,10 +841,33 @@ class EventPublic {
             $confirmation_message_html,
             $confirmation_headers
         );
+        
+        // Remove the encoding filter
+        remove_action('phpmailer_init', array($this, 'force_email_8bit_encoding'));
+        
+        // === RE-ENABLE WORDPRESS FILTERS ===
+        foreach ($removed_filters as $filter_name => $priority) {
+            if ($filter_name === 'emoji') {
+                add_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $priority);
+            }
+        }
         error_log('Confirmation email data: ' . $confirmation_to . ' | ' . $confirmation_subject . ' | ' . $confirmation_message_html);
         error_log('Confirmation email headers: ' . print_r($confirmation_headers, true));
 
         $this->log_email($event_data['id'], 'confirmation', $registration_data['email'], $confirmation_subject, $confirmation_message_html, $confirmation_sent ? 'sent' : 'failed');
+
+        // === DISABLE WORDPRESS FILTERS FOR NOTIFICATION EMAIL ===
+        $removed_filters_notify = array();
+        
+        // Remove emoji conversion filter
+        $emoji_priority_notify = has_filter('wp_mail_content', 'wp_staticize_emoji_for_email');
+        if ($emoji_priority_notify !== false) {
+            remove_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $emoji_priority_notify);
+            $removed_filters_notify['emoji'] = $emoji_priority_notify;
+        }
+        
+        // Add filter to force 8bit encoding on PHPMailer BEFORE mail is sent
+        add_action('phpmailer_init', array($this, 'force_email_8bit_encoding'), 10, 1);
 
         // Send the admin notification email
         $notification_sent = wp_mail(
@@ -753,6 +876,16 @@ class EventPublic {
             $notification_message_html,
             $notification_headers
         );
+        
+        // Remove the encoding filter
+        remove_action('phpmailer_init', array($this, 'force_email_8bit_encoding'));
+        
+        // === RE-ENABLE WORDPRESS FILTERS ===
+        foreach ($removed_filters_notify as $filter_name => $priority) {
+            if ($filter_name === 'emoji') {
+                add_filter('wp_mail_content', 'wp_staticize_emoji_for_email', $priority);
+            }
+        }
         $this->log_email($event_data['id'], 'notification', $sct_settings['admin_email'], $notification_subject, $notification_message_html, $notification_sent ? 'sent' : 'failed');
 
         // Log email statuses
@@ -762,7 +895,84 @@ class EventPublic {
         // Log email in the database
     }
 
-
+    /**
+     * Enrich placeholder data with additional fields
+     * 
+     * Maps event-specific additional fields to simple placeholder names
+     * like {{additional_field_1}}, {{whole_table_booking}}, etc.
+     * 
+     * @param array $placeholder_data
+     * @param array $registration_data
+     * @param array $event_data
+     * @return array
+     */
+    private function enrich_additional_fields($placeholder_data, $registration_data, $event_data) {
+        // Unserialize comments field which contains additional field values
+        $comments = $registration_data['comments'] ?? null;
+        if (empty($comments)) {
+            return $placeholder_data;
+        }
+        
+        // Unserialize the comments field
+        $additional_values = maybe_unserialize($comments);
+        if (!is_array($additional_values)) {
+            return $placeholder_data;
+        }
+        
+        // Get field definitions from event data
+        $comment_fields = $event_data['comment_fields'] ?? null;
+        if (empty($comment_fields)) {
+            return $placeholder_data;
+        }
+        
+        // Decode comment_fields if it's a JSON string
+        if (is_string($comment_fields)) {
+            $comment_fields = json_decode($comment_fields, true);
+        }
+        
+        if (!is_array($comment_fields)) {
+            return $placeholder_data;
+        }
+        
+        // Create a map of field ID to field label
+        $field_labels = array();
+        foreach ($comment_fields as $field) {
+            if (!empty($field['id']) && !empty($field['label'])) {
+                $field_labels[$field['id']] = $field['label'];
+            }
+        }
+        
+        // Add all additional fields to placeholder_data with both ID and label-based keys
+        $field_counter = 1;
+        foreach ($additional_values as $field_id => $field_value) {
+            if (!empty($field_value)) {
+                // Get the label for this field
+                $label = $field_labels[$field_id] ?? null;
+                
+                // Add numbered placeholder: {{additional_field_1}}, {{additional_field_2}}, etc.
+                $placeholder_data['additional_field_' . $field_counter] = $field_value;
+                
+                // If we have a label, also add label-based placeholder
+                if (!empty($label)) {
+                    $label_key = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $label));
+                    $label_key = trim($label_key, '_');
+                    $placeholder_data[$label_key] = $field_value;
+                    $placeholder_data['additional_' . $label_key] = $field_value;
+                }
+                
+                // Also store with field ID as key for direct access
+                $placeholder_data[$field_id] = $field_value;
+                
+                $field_counter++;
+            }
+        }
+        
+        // Store the additional values for use in generating the {{additional_fields}} placeholder
+        $placeholder_data['_additional_values'] = $additional_values;
+        $placeholder_data['_field_labels'] = $field_labels;
+        
+        return $placeholder_data;
+    }
 
     private function log_email($event_id, $email_type, $recipient_email, $subject, $message, $status = 'sent') {
         return SCT_Event_Email_Utilities::log_email($event_id, $email_type, $recipient_email, $subject, $message, $status);
@@ -771,9 +981,334 @@ class EventPublic {
     private function generate_dkim_signature($subject, $from_email, $to_email, $body) {
         return SCT_Event_Email_Utilities::generate_dkim_signature($subject, $from_email, $to_email, $body);
     }
+
+    /**
+     * Apply autop but preserve placeholder syntax
+     * Regular wpautop() can break {{placeholders}} by removing braces
+     *
+     * @param string $text Text to apply autop to
+     * @return string Text with paragraphs added and placeholders preserved
+     */
+    private function safe_autop($text) {
+        // First, temporarily replace all placeholders with markers
+        $placeholders = array();
+        $marker_counter = 0;
+        
+        // Match both {{}} and {} placeholder formats
+        $text = preg_replace_callback('/\{\{[^}]*\}\}|\{[^}]*\}/', function($matches) use (&$placeholders, &$marker_counter) {
+            $placeholder_key = '___PLACEHOLDER_' . $marker_counter . '___';
+            $placeholders[$placeholder_key] = $matches[0];
+            $marker_counter++;
+            return $placeholder_key;
+        }, $text);
+        
+        // Now apply wpautop safely
+        $text = wpautop($text);
+        
+        // Restore all placeholders
+        foreach ($placeholders as $key => $placeholder) {
+            $text = str_replace($key, $placeholder, $text);
+        }
+        
+        return $text;
+    }
     
+    /**
+     * IMPROVED: Simplified email placeholder replacement
+     * Handles both old {format} and new {{format}} directly without complex callbacks
+     * This is more reliable for email generation
+     *
+     * @param string $template Template with placeholders
+     * @param array $data Data to replace placeholders with
+     * @return string Template with placeholders replaced
+     */
     private function replace_email_placeholders($template, $data) {
-        return SCT_Event_Email_Utilities::replace_email_placeholders($template, $data);
+        // Build a comprehensive mapping of all possible placeholder keys
+        $replacements = array();
+        
+        // Helper function to safely get value as string
+        $get_value = function($key) use ($data) {
+            if (!isset($data[$key])) {
+                return '';
+            }
+            $value = $data[$key];
+            if (is_array($value) || is_object($value)) {
+                return '';
+            }
+            return (string)$value;
+        };
+        
+        // === SIMPLE FLAT KEY REPLACEMENTS ===
+        // These handle direct database field names
+        // ONLY add entries that actually have values
+        $simple_fields = array(
+            'event_name', 'event_title', 'event_date', 'event_time', 'event_description',
+            'location_name', 'location_link', 'location_url',
+            'name', 'email', 'phone', 'company_name', 'address', 'city', 'postal_code', 'country',
+            'guest_count', 'payment_method', 'payment_status',
+            'registration_id', 'registration_date', 'unique_identifier',
+            'website_name', 'website_url', 'admin_email', 'current_date', 'current_year',
+            'total_price', 'pricing_overview', 'payment_method_details', 'reservation_link',
+            'attendee_name', 'attendee_email', 'attendee_guest_count', 'registration_name', 'registration_email'
+        );
+        
+        foreach ($simple_fields as $field) {
+            $value = $get_value($field);
+            if (!empty($value)) {
+                // Old format: {field_name}
+                $replacements['{' . $field . '}'] = $value;
+                // New format: {{field_name}}
+                $replacements['{{' . $field . '}}'] = $value;
+            }
+        }
+        
+        // === COMPLEX HTML FIELDS - Explicit Handling ===
+        // These fields contain HTML that needs special handling
+        // Ensure they are ALWAYS replaced, even if empty
+        $html_fields = array('pricing_overview', 'payment_method_details', 'pricing_breakdown', 'goods_services_breakdown');
+        
+        foreach ($html_fields as $field) {
+            if (isset($data[$field])) {
+                $value = $data[$field];
+                // For HTML fields, cast to string but don't skip empties
+                // This ensures the placeholder is replaced even with empty content
+                $value_str = (string)$value;
+                if (!empty($value_str)) {
+                    $replacements['{' . $field . '}'] = $value_str;
+                    $replacements['{{' . $field . '}}'] = $value_str;
+                } else {
+                    // Replace empty HTML fields with empty string (effectively removing the placeholder)
+                    $replacements['{' . $field . '}'] = '';
+                    $replacements['{{' . $field . '}}'] = '';
+                }
+            }
+        }
+        
+        // === ADDITIONAL FIELDS (Dynamic) ===
+        // These come from custom field responses and need special handling
+        foreach ($data as $key => $value) {
+            if (strpos($key, 'additional_field_') === 0) {
+                if (!is_array($value) && !is_object($value)) {
+                    $value_str = (string)$value;
+                    if (!empty($value_str)) {
+                        $replacements['{{' . $key . '}}'] = $value_str;
+                        $replacements['{' . $key . '}'] = $value_str;
+                    }
+                }
+            }
+        }
+        
+        // === ADDITIONAL_FIELDS SUMMARY ===
+        // Build a comprehensive list of all additional fields for the {{additional_fields}} placeholder
+        $additional_fields_html = '';
+        $additional_fields_text = '';
+        
+        // Get additional field values and labels from enriched data
+        $additional_values = $data['_additional_values'] ?? array();
+        $field_labels = $data['_field_labels'] ?? array();
+        
+        // Build the additional fields output from the values and labels
+        foreach ($additional_values as $field_id => $value) {
+            if (!empty($value)) {
+                // Get label for this field from the field_labels map
+                $label = $field_labels[$field_id] ?? ucwords(str_replace('_', ' ', $field_id));
+                $value_str = (string)$value;
+                
+                // HTML format
+                $additional_fields_html .= '<div class="detail-row">' . "\n";
+                $additional_fields_html .= '                    <span class="detail-label">' . esc_html($label) . '</span>' . "\n";
+                $additional_fields_html .= '                    <span class="detail-value">' . esc_html($value_str) . '</span>' . "\n";
+                $additional_fields_html .= '                </div>' . "\n";
+                
+                // Text format
+                $additional_fields_text .= $label . ': ' . $value_str . "\n";
+            }
+        }
+        
+        if (!empty($additional_fields_html)) {
+            // Wrap in the section tags for display
+            $additional_fields_html = '            <!-- Your Preferences Section -->' . "\n" .
+                                     '            <div class="section">' . "\n" .
+                                     '                <div class="section-title">Your Preferences</div>' . "\n" .
+                                     $additional_fields_html .
+                                     '            </div>' . "\n";
+            
+            $replacements['{{additional_fields}}'] = $additional_fields_html;
+            $replacements['{{additional.fields}}'] = $additional_fields_html;
+            $replacements['{additional_fields}'] = $additional_fields_html;
+        } else {
+            // No additional fields - replace placeholder with empty string
+            $replacements['{{additional_fields}}'] = '';
+            $replacements['{{additional.fields}}'] = '';
+            $replacements['{additional_fields}'] = '';
+        }
+        
+        if (!empty($additional_fields_text)) {
+            $replacements['{{additional_fields_text}}'] = $additional_fields_text;
+            $replacements['{additional_fields_text}'] = $additional_fields_text;
+        }
+        
+        // === NESTED FIELD REPLACEMENTS ===
+        // These map nested placeholders to data values
+        
+        // Event nested
+        $event_title = $get_value('event_title') ?: $get_value('event_name');
+        if (!empty($event_title)) {
+            $replacements['{{event.title}}'] = $event_title;
+            $replacements['{{event.name}}'] = $event_title;
+        }
+        
+        $event_date = $get_value('event_date');
+        if (!empty($event_date)) {
+            $replacements['{{event.date}}'] = $event_date;
+        }
+        
+        $event_time = $get_value('event_time');
+        if (!empty($event_time)) {
+            $replacements['{{event.time}}'] = $event_time;
+        }
+        
+        $event_desc = $get_value('event_description') ?: $get_value('description');
+        if (!empty($event_desc)) {
+            $replacements['{{event.description}}'] = $event_desc;
+        }
+        
+        // Attendee nested
+        $attendee_name = $get_value('attendee_name') ?: $get_value('name');
+        if (!empty($attendee_name)) {
+            $replacements['{{attendee.name}}'] = $attendee_name;
+            $replacements['{{registration.name}}'] = $attendee_name;
+        }
+        
+        $attendee_email = $get_value('attendee_email') ?: $get_value('email');
+        if (!empty($attendee_email)) {
+            $replacements['{{attendee.email}}'] = $attendee_email;
+            $replacements['{{registration.email}}'] = $attendee_email;
+        }
+        
+        $guest_count = $get_value('attendee_guest_count') ?: $get_value('guest_count');
+        if (!empty($guest_count)) {
+            $replacements['{{attendee.guest_count}}'] = $guest_count;
+            $replacements['{{people_count}}'] = $guest_count;
+        }
+        
+        $registration_date = $get_value('registration_date');
+        if (!empty($registration_date)) {
+            $replacements['{{registration.date}}'] = $registration_date;
+        }
+        
+        $registration_id = $get_value('registration_id') ?: $get_value('id');
+        if (!empty($registration_id)) {
+            $replacements['{{registration.id}}'] = $registration_id;
+        }
+        
+        // Location nested
+        $location_name = $get_value('location_name');
+        if (!empty($location_name)) {
+            $replacements['{{location.name}}'] = $location_name;
+        }
+        
+        $location_link = $get_value('location_link') ?: $get_value('location_url');
+        if (!empty($location_link)) {
+            $replacements['{{location.link}}'] = $location_link;
+            $replacements['{{location.url}}'] = $location_link;
+        }
+        
+        // Payment nested
+        $total_price = $get_value('total_price');
+        if (!empty($total_price)) {
+            $replacements['{{payment.total}}'] = $total_price;
+        }
+        
+        $payment_method = $get_value('payment_method');
+        if (!empty($payment_method)) {
+            $replacements['{{payment.method}}'] = $payment_method;
+        }
+        
+        $payment_status = $get_value('payment_status');
+        if (!empty($payment_status)) {
+            $replacements['{{payment.status}}'] = $payment_status;
+        }
+        
+        // Website nested
+        $website_name = $get_value('website_name');
+        if (!empty($website_name)) {
+            $replacements['{{website.name}}'] = $website_name;
+        }
+        
+        $website_url = $get_value('website_url');
+        if (!empty($website_url)) {
+            $replacements['{{website.url}}'] = $website_url;
+        }
+        
+        $admin_email = $get_value('admin_email');
+        if (!empty($admin_email)) {
+            $replacements['{{admin.email}}'] = $admin_email;
+        }
+        
+        // Reservation link
+        $reservation_link = $get_value('reservation_link');
+        if (!empty($reservation_link)) {
+            $replacements['{{reservation.link}}'] = $reservation_link;
+            $replacements['{{reservation_link}}'] = $reservation_link;
+        }
+        
+        // Current year/date
+        $current_year = $get_value('current_year');
+        if (!empty($current_year)) {
+            $replacements['{{current_year}}'] = $current_year;
+            $replacements['{{date.year}}'] = $current_year;
+        }
+        
+        // === DYNAMIC REGISTRATION FIELDS ===
+        // Support for {{registration.FIELDNAME}} notation for all registration fields
+        $registration_fields = array(
+            'name', 'email', 'phone', 'company_name', 'address', 'city', 
+            'postal_code', 'country', 'guest_count', 'payment_method', 'payment_status',
+            'registration_id', 'registration_date', 'unique_identifier'
+        );
+        
+        foreach ($registration_fields as $field) {
+            $value = $get_value($field);
+            if (!empty($value)) {
+                // Add {{registration.fieldname}} variation
+                $replacements['{{registration.' . $field . '}}'] = $value;
+                // Also support underscore version
+                $replacements['{{registration.' . str_replace('_', '-', $field) . '}}'] = $value;
+            }
+        }
+        
+        // === DYNAMIC EVENT FIELDS ===
+        // Support for {{event.FIELDNAME}} notation for all event fields
+        $event_fields = array(
+            'event_name', 'event_date', 'event_time', 'event_description',
+            'location_name', 'location_link', 'location_url'
+        );
+        
+        foreach ($event_fields as $field) {
+            $value = $get_value($field);
+            if (!empty($value)) {
+                // Strip 'event_' prefix for the placeholder name
+                $clean_name = str_replace('event_', '', $field);
+                // Add {{event.fieldname}} variation
+                $replacements['{{event.' . $clean_name . '}}'] = $value;
+                // Also support underscore version
+                $replacements['{{event.' . str_replace('_', '-', $clean_name) . '}}'] = $value;
+            }
+        }
+        
+        // Apply all replacements - IMPORTANT: Sort by length DESC to avoid double-replacement
+        // For example, replace {{field}} BEFORE {field} to avoid partial matches
+        // Sort replacements by key length in descending order
+        uksort($replacements, function($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+        
+        foreach ($replacements as $placeholder => $value) {
+            $template = str_replace($placeholder, $value, $template);
+        }
+        
+        return $template;
     }
     
     private function get_default_notification_template() {
@@ -789,6 +1324,68 @@ class EventPublic {
                "Time: {{event.time}}\n" .
                "Location: {{event.location_name}}" .
                "Location Url: {{event.location_url}}";
+    }
+    
+    /**
+     * Clean up unreplaced placeholders from email content
+     * Removes any {{placeholder}} or {placeholder} that wasn't replaced with actual values
+     * For HTML content: removes elements containing only placeholders
+     * For text content: removes lines containing only placeholders
+     * IMPORTANT: Only matches placeholders, NOT CSS curly braces
+     * 
+     * @param string $content Email content with potential unreplaced placeholders
+     * @return string Content with empty placeholders cleaned up
+     */
+    private function clean_empty_placeholders($content) {
+        // Detect if this is HTML content
+        $is_html = preg_match('/<[a-z]+.*?>/i', $content);
+        
+        if ($is_html) {
+            // === HTML CONTENT CLEANUP ===
+            // IMPORTANT: Only clean up actual placeholders {{...}} or {placeholders}, 
+            // NOT CSS braces or other content
+            
+            // Remove detail-row divs where the value span contains ONLY a placeholder (with whitespace)
+            // Using negative lookahead to prevent matching across multiple divs
+            // ONLY match {{placeholder}} format (double braces) - NOT single braces that might be CSS
+            $content = preg_replace(
+                '/<div\s+class="detail-row"[^>]*>(?:(?!<\/div>).)*<span[^>]*class="detail-value"[^>]*>\s*\{\{[^}]+\}\}\s*<\/span>\s*<\/div>/is',
+                '',
+                $content
+            );
+            
+            // Remove other divs/sections that only contain unreplaced placeholders (double braces only)
+            $content = preg_replace('/<div[^>]*>\s*\{\{[^}]+\}\}\s*<\/div>/i', '', $content);
+            $content = preg_replace('/<section[^>]*>\s*\{\{[^}]+\}\}\s*<\/section>/i', '', $content);
+            
+            // Remove any remaining unreplaced {{placeholders}} (double braces only)
+            $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
+            
+            // Clean up empty divs and empty spans (but be careful not to match CSS)
+            $content = preg_replace('/<div[^>]*>\s*<\/div>/i', '', $content);
+            $content = preg_replace('/<span[^>]*>\s*<\/span>/i', '', $content);
+            
+            // Clean up excessive whitespace and blank lines
+            $content = preg_replace('/\n\s*\n+/', "\n", $content);
+            
+        } else {
+            // === TEXT CONTENT CLEANUP ===
+            
+            // Remove lines that only contain unreplaced placeholders (double braces only)
+            // This handles cases like: "Phone: {{registration.phone}}" when phone is empty
+            $content = preg_replace('/^[^:\n]*:\s*\{\{[^}]+\}\}\s*$/m', '', $content);
+            
+            // Also remove completely empty lines created by the above replacement
+            $content = preg_replace('/\n\n+/', "\n", $content);
+            
+            // Remove any remaining unreplaced {{placeholders}} (double braces only)
+            $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
+            
+            // Clean up multiple consecutive blank lines
+            $content = preg_replace('/\n\n+/', "\n", $content);
+        }
+        
+        return $content;
     }
     
     private function get_default_confirmation_template() {
@@ -873,6 +1470,91 @@ class EventPublic {
         }
 
         wp_send_json_success(array('message' => 'Reservation deleted successfully'));
+    }
+
+    /**
+     * REPAIR CORRUPTED EMAIL TEMPLATES
+     * 
+     * Detects and repairs email templates that were corrupted by WordPress wpautop() filter.
+     * Symptoms: CSS on multiple lines with <br /> tags, HTML structure mangled
+     * Root cause: wp_editor() or other form processing applying wpautop() on save
+     * 
+     * This function:
+     * 1. Detects if template has corruption markers (CSS with <br /> tags)
+     * 2. Attempts to reconstruct single-line CSS if possible
+     * 3. Returns original template if no corruption detected
+     * 4. Can be used on database load or before form display
+     * 
+     * @param string $template Email template potentially corrupted
+     * @return string Repaired template or original if not corrupted
+     */
+    public static function repair_corrupted_template($template) {
+        if (empty($template)) {
+            return $template;
+        }
+        
+        // Check for corruption markers: <style> tag content contains <br /> or <br>
+        // This indicates wpautop() was applied to the CSS
+        if (!preg_match('/<style[^>]*>.*?<\/style>/is', $template)) {
+            // No style tag, not corrupted (or not an HTML template)
+            return $template;
+        }
+        
+        // Extract the style block
+        if (!preg_match('/<style[^>]*>(.*?)<\/style>/is', $template, $matches)) {
+            return $template;
+        }
+        
+        $style_content = $matches[1];
+        
+        // Check if style content has corruption markers
+        if (!preg_match('/<br\s*\/?>/i', $style_content)) {
+            // No br tags in style, not corrupted
+            return $template;
+        }
+        
+        // CORRUPTED: Attempt to repair
+        // Remove all <br> and <br /> tags from style content
+        $repaired_style = preg_replace('/<br\s*\/?>/i', '', $style_content);
+        
+        // Remove extra whitespace and newlines in CSS (collapse multiple spaces)
+        $repaired_style = preg_replace('/\s+/', ' ', $repaired_style);
+        
+        // Trim the result
+        $repaired_style = trim($repaired_style);
+        
+        // Replace the corrupted style block with the repaired one
+        $repaired_template = preg_replace(
+            '/<style[^>]*>(.*?)<\/style>/is',
+            '<style>' . $repaired_style . '</style>',
+            $template
+        );
+        
+        error_log('EMAIL TEMPLATE CORRUPTION DETECTED AND REPAIRED');
+        error_log('Original style length: ' . strlen($style_content));
+        error_log('Repaired style length: ' . strlen($repaired_style));
+        
+        return $repaired_template;
+    }
+
+    /**
+     * FORCE 8BIT EMAIL ENCODING
+     * 
+     * PHPMailer callback to force Content-Transfer-Encoding to 8bit
+     * This prevents the mail relay from converting to quoted-printable
+     * 
+     * @param object $phpmailer PHPMailer instance
+     */
+    public function force_email_8bit_encoding($phpmailer) {
+        $phpmailer->ContentTransferEncoding = '8bit';
+        $phpmailer->Encoding = '8bit';
+        
+        // Also ensure the body encoding is not changed
+        if (property_exists($phpmailer, 'Body')) {
+            // Body is already set, we just need to ensure encoding
+        }
+        
+        error_log('PHPMailer encoding forced to 8bit');
     }
 
 }

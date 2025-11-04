@@ -84,6 +84,15 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
+                                    <?php if (!empty($event->collect_phone)): ?>
+                                        <th class="collapse">Phone</th>
+                                    <?php endif; ?>
+                                    <?php if (!empty($event->collect_company)): ?>
+                                        <th class="collapse">Company</th>
+                                    <?php endif; ?>
+                                    <?php if (!empty($event->collect_address)): ?>
+                                        <th class="collapse">Address</th>
+                                    <?php endif; ?>
                                     <?php if (!empty($pricing_options)) : ?>
                                         <?php foreach ($pricing_options as $option) : ?>
                                             <th class="collapse column-small-number center"
@@ -159,6 +168,25 @@
                                     <tr data-registration-id="<?php echo esc_attr($registration->id); ?>">
                                         <td><?php echo esc_html($registration->name); ?></td>
                                         <td class="collapse"><?php echo esc_html($registration->email); ?></td>
+                                        <?php if (!empty($event->collect_phone)): ?>
+                                            <td class="collapse"><?php echo esc_html($registration->phone ?: '—'); ?></td>
+                                        <?php endif; ?>
+                                        <?php if (!empty($event->collect_company)): ?>
+                                            <td class="collapse"><?php echo esc_html($registration->company_name ?: '—'); ?></td>
+                                        <?php endif; ?>
+                                        <?php if (!empty($event->collect_address)): ?>
+                                            <td class="collapse">
+                                                <?php 
+                                                $address_parts = array_filter([
+                                                    $registration->address,
+                                                    $registration->city,
+                                                    $registration->postal_code,
+                                                    $registration->country
+                                                ]);
+                                                echo esc_html(implode(', ', $address_parts) ?: '—'); 
+                                                ?>
+                                            </td>
+                                        <?php endif; ?>
                                         <?php if (!empty($event->pricing_options)) : ?>
                                             <?php foreach ($pricing_options as $index => $option) : 
                                                 $guest_count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
@@ -252,26 +280,36 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th colspan="2">Totals</th>
+                                    <td><?php echo 'Totals'; ?></td>
+                                    <td class="collapse"></td>
+                                    <?php if (!empty($event->collect_phone)): ?>
+                                        <td class="collapse"></td>
+                                    <?php endif; ?>
+                                    <?php if (!empty($event->collect_company)): ?>
+                                        <td class="collapse"></td>
+                                    <?php endif; ?>
+                                    <?php if (!empty($event->collect_address)): ?>
+                                        <td class="collapse"></td>
+                                    <?php endif; ?>
                                     <?php if (!empty($event->pricing_options)) : ?>
                                         <?php foreach ($pricing_options as $index => $option) : ?>
-                                            <th class="collapse column-small center total-pricing-option" data-pricing-index="<?php echo esc_attr($index); ?>">0</th>
+                                            <td class="collapse column-small center total-pricing-option" data-pricing-index="<?php echo esc_attr($index); ?>">0</td>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                     <?php if (!empty($event->goods_services)) : ?>
                                         <?php foreach ($goods_services_options as $index => $service) : ?>
-                                            <th class="collapse column-small center total-goods-service" data-service-index="<?php echo esc_attr($index); ?>">0</th>
+                                            <td class="collapse column-small center total-goods-service" data-service-index="<?php echo esc_attr($index); ?>">0</td>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
-                                    <th class="collapse column-small center event-total-guests">
+                                    <td class="collapse column-small center event-total-guests">
                                         <?php echo esc_html($total_guests); ?>
-                                    </th>
+                                    </td>
                                     <?php if (!empty($event->goods_services) || !empty($event->pricing_options)) : ?>
-                                        <th class="collapse column-small center event-total-price">0.00</th>
-                                        <th></th>
-                                        <th></th>
+                                        <td class="collapse column-small center event-total-price">0.00</td>
+                                        <td class="collapse column-small center"></td>
+                                        <td class="collapse column-small center"></td>
                                     <?php endif; ?>
-                                    <th></th>
+                                    <td class="right"></td>
                                 </tr>
                             </tfoot>
                         </table>

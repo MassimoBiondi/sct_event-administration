@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: SCT Event Administration
+Plugin Name: SCT Events
 Plugin URI: https://github.com/MassimoBiondi/sct_event-administration
 Description: Advanced WordPress event management plugin with multi-day events, event registrations, integrated email notifications, and a Gutenberg Events List block. Features include event capacity management, lottery-based registration, waiting lists, and registration email templates with dynamic placeholders. Contains Icons; lottery wheel by bsd studio from <a href="https://thenounproject.com/browse/icons/term/lottery-wheel/" target="_blank" title="lottery wheel Icons">Noun Project</a> (CC BY 3.0) / User by Lucas del Río from <a href="https://thenounproject.com/browse/icons/term/user/" target="_blank" title="User Icons">Noun Project</a> (CC BY 3.0)
-Version: 2.10.2
+Version: 2.10.8
 Author: Massimo Biondi
 Author URI: https://massimo.tokyo/
 License: GPLv2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) exit;
 
 define('EVENT_ADMIN_PATH', plugin_dir_path(__FILE__));
 define('EVENT_ADMIN_URL', plugin_dir_url(__FILE__));
-define('EVENT_ADMIN_VERSION', '2.10.2');
+define('EVENT_ADMIN_VERSION', '2.10.8');
 
 // Load email utilities and placeholder system
 require_once EVENT_ADMIN_PATH . 'includes/class-email-utilities.php';
@@ -54,7 +54,9 @@ function event_admin_activate() {
         max_guests_per_registration int NOT NULL,
         admin_email varchar(255) NOT NULL,
         pricing_options longtext DEFAULT NULL,
+        pricing_description longtext DEFAULT NULL,
         goods_services longtext NULL,
+        goods_services_description longtext DEFAULT NULL,
         member_only tinyint(1) DEFAULT 0,
         by_lottery tinyint(1) DEFAULT 0,
         has_waiting_list tinyint(1) DEFAULT 0,
@@ -63,12 +65,41 @@ function event_admin_activate() {
         publish_date datetime DEFAULT NULL,
         unpublish_date datetime DEFAULT NULL,
         payment_methods text DEFAULT NULL,
+        payment_methods_description longtext DEFAULT NULL,
+        collect_phone tinyint(1) DEFAULT 0,
+        collect_company tinyint(1) DEFAULT 0,
+        collect_address tinyint(1) DEFAULT 0,
+        comment_fields longtext DEFAULT NULL,
         external_registration tinyint(1) DEFAULT 0,
         external_registration_url varchar(500) DEFAULT NULL,
         external_registration_text varchar(255) DEFAULT NULL,
         PRIMARY KEY  (id)
     ) ENGINE=INNODB $charset_collate;";
     dbDelta($sql);
+
+    // Add missing columns if they don't exist (for existing installations)
+    $table_name = $wpdb->prefix . 'sct_events';
+    
+    // Add comment_fields column if it doesn't exist
+    $column_exists = $wpdb->query($wpdb->prepare(
+        "SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME = %s AND COLUMN_NAME = 'comment_fields' AND TABLE_SCHEMA = %s",
+        $table_name,
+        DB_NAME
+    ));
+    if (!$column_exists) {
+        $wpdb->query("ALTER TABLE $table_name ADD COLUMN comment_fields longtext DEFAULT NULL AFTER collect_address");
+    }
+
+    // Add comments column to registrations table if it doesn't exist
+    $reg_table_name = $wpdb->prefix . 'sct_event_registrations';
+    $reg_column_exists = $wpdb->query($wpdb->prepare(
+        "SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME = %s AND COLUMN_NAME = 'comments' AND TABLE_SCHEMA = %s",
+        $reg_table_name,
+        DB_NAME
+    ));
+    if (!$reg_column_exists) {
+        $wpdb->query("ALTER TABLE $reg_table_name ADD COLUMN comments longtext DEFAULT NULL AFTER country");
+    }
     
     $sql = "CREATE TABLE {$wpdb->prefix}sct_event_registrations (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -78,6 +109,13 @@ function event_admin_activate() {
         guest_count int NOT NULL,
         guest_details longtext DEFAULT NULL,
         goods_services longtext DEFAULT NULL,
+        company_name varchar(255) DEFAULT NULL,
+        phone varchar(20) DEFAULT NULL,
+        address varchar(255) DEFAULT NULL,
+        city varchar(100) DEFAULT NULL,
+        postal_code varchar(20) DEFAULT NULL,
+        country varchar(100) DEFAULT NULL,
+        comments longtext DEFAULT NULL,
         registration_date datetime DEFAULT CURRENT_TIMESTAMP,
         is_winner tinyint(1) DEFAULT 0,
         unique_identifier varchar(255) NOT NULL,
@@ -262,6 +300,29 @@ function event_admin_update_database() {
     }
     if (!in_array('external_registration_text', $columns)) {
         $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN external_registration_text varchar(255) DEFAULT NULL AFTER external_registration_url");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Add pricing_description column if it doesn't exist
+    if (!in_array('pricing_description', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN pricing_description LONGTEXT DEFAULT NULL AFTER pricing_options");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Add goods_services_description column if it doesn't exist
+    if (!in_array('goods_services_description', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN goods_services_description LONGTEXT DEFAULT NULL AFTER goods_services");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
+    }
+
+    // Add payment_methods_description column if it doesn't exist
+    if (!in_array('payment_methods_description', $columns)) {
+        $wpdb->query("ALTER TABLE {$wpdb->prefix}sct_events ADD COLUMN payment_methods_description LONGTEXT DEFAULT NULL AFTER payment_methods");
+        // Refresh columns list after adding new column
+        $columns = $wpdb->get_col("DESCRIBE {$wpdb->prefix}sct_events");
     }
 
     // Update the sct_events table

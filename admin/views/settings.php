@@ -104,6 +104,40 @@
                         <p class="description">Choose which day the calendar week should start on.</p>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">Registration Form Fields</th>
+                    <td>
+                        <fieldset>
+                            <legend class="screen-reader-text">Registration Form Fields</legend>
+                            <label>
+                                <input type="checkbox" 
+                                       name="registration_field_phone" 
+                                       value="1" 
+                                       <?php checked($sct_settings['registration_field_phone'] ?? 0, 1); ?>>
+                                Show Phone Number Field
+                            </label>
+                            <p class="description">Display telephone number field in registration form</p>
+                            
+                            <label style="margin-top: 10px; display: block;">
+                                <input type="checkbox" 
+                                       name="registration_field_company" 
+                                       value="1" 
+                                       <?php checked($sct_settings['registration_field_company'] ?? 0, 1); ?>>
+                                Show Company Name Field
+                            </label>
+                            <p class="description">Display company/organization name field in registration form</p>
+                            
+                            <label style="margin-top: 10px; display: block;">
+                                <input type="checkbox" 
+                                       name="registration_field_address" 
+                                       value="1" 
+                                       <?php checked($sct_settings['registration_field_address'] ?? 0, 1); ?>>
+                                Show Address Fields
+                            </label>
+                            <p class="description">Display address fields (Address, City, Postal Code, Country) in registration form</p>
+                        </fieldset>
+                    </td>
+                </tr>
             </table>
         </div>
 
@@ -258,6 +292,9 @@
                                     </p>
                                 </div>
                             </div>
+                            
+                            <!-- Additional Fields Help Section -->
+                            <?php include dirname(__FILE__) . '/partial-additional-fields-help.php'; ?>
                         </div>
                     </td>
                 </tr>

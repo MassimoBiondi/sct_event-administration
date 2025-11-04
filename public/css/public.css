@@ -138,6 +138,7 @@ button:hover {
     padding: 20px;
     border-bottom: 1px solid;
     /* margin-bottom: 30px; */
+    text-align: center;
 }
 
 .event-info {
@@ -358,6 +359,10 @@ button:hover {
     margin-top: 15px;
 }
 
+.entry-content > .uk-container {
+    max-width: 80rem;
+}
+
 .registration-form input[type="number"] {
     width: 100px;
     text-align: right;
@@ -403,4 +408,124 @@ button:hover {
     background: #fff6f6 !important;
     border-radius: 4px;
     transition: border 0.2s, background 0.2s;
+}
+
+/* ===== UIKit Theme Override Styles ===== */
+/* These overrides ensure the event registration form displays correctly */
+/* even when the theme's UIKit CSS is loaded */
+
+#event-registration-form {
+    background: #f9f9f9 !important;
+    padding: 20px !important;
+}
+
+/* Override UIKit margin utilities */
+#event-registration-form .uk-margin {
+    margin-bottom: 20px !important;
+}
+
+#event-registration-form .uk-form-controls {
+    display: block !important;
+    margin: 0 !important;
+}
+
+/* Style form inputs and textareas */
+#event-registration-form .uk-form-controls input,
+#event-registration-form .uk-form-controls textarea,
+#event-registration-form .uk-form-controls select {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+}
+
+#event-registration-form .uk-form-controls textarea {
+    resize: vertical !important;
+}
+
+/* Style labels */
+#event-registration-form label {
+    display: block !important;
+    margin-bottom: 5px !important;
+    font-weight: bold !important;
+    margin-top: 0 !important;
+    color: #333 !important;
+}
+
+/* Style description text */
+#event-registration-form .description {
+    display: block !important;
+    color: #666 !important;
+    margin-top: 5px !important;
+    font-size: 0.9em !important;
+}
+
+/* Override grid layout for UIKit */
+#event-registration-form .uk-grid-small {
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+}
+
+#event-registration-form .uk-grid-small > div {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    margin-bottom: 15px !important;
+}
+
+/* Handle responsive grid */
+@media (max-width: 960px) {
+    #event-registration-form .uk-width-1-2\@m {
+        width: 100% !important;
+    }
+}
+
+/* Style comment fields section */
+#comment-fields-section {
+    border-top: 2px solid #e5e5e5 !important;
+    padding-top: 20px !important;
+    margin-top: 20px !important;
+}
+
+#comment-fields-section h4 {
+    margin-top: 0 !important;
+    color: #333 !important;
+}
+
+/* Checkbox styling */
+#event-registration-form input[type="checkbox"] {
+    margin-right: 8px !important;
+    vertical-align: middle !important;
+}
+
+#event-registration-form label:has(> input[type="checkbox"]) {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 10px !important;
+}
+
+#event-registration-form label:has(> input[type="checkbox"]) span {
+    margin-left: 5px !important;
+}
+
+/* Alert styles */
+#event-registration-form .uk-alert {
+    padding: 15px !important;
+    margin-bottom: 20px !important;
+    border-radius: 4px !important;
+}
+
+#event-registration-form .uk-alert-warning {
+    background: #fff3cd !important;
+    color: #856404 !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
+/* Required field indicator */
+.required {
+    color: #e74c3c !important;
+    font-weight: bold !important;
+    margin-left: 2px !important;
 }

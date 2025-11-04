@@ -1,0 +1,44 @@
+name: Release Builder
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get version from tag
+        id: tag_name
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP file
+        run: |
+          mkdir -p build
+          zip -r "build/sct_event-administration-${{ steps.tag_name.outputs.version }}.zip" . \
+            -x "*.git*" ".github/*" "node_modules/*" "*.md" "*.sh" "build/*" ".env*" "composer.lock"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-zip
+          path: build/*.zip
+          retention-days: 30

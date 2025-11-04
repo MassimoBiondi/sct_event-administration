@@ -20,6 +20,7 @@ class EventAdmin {
         add_action('wp_ajax_update_payment_status', array($this, 'update_payment_status'));
         add_action('wp_ajax_view_registration_details', array($this, 'view_registration_details'));
         add_action('wp_ajax_check_github_updates', array($this, 'check_github_updates'));
+        add_action('wp_ajax_get_event_comment_fields', array($this, 'get_event_comment_fields'));
     }
 
     public function add_admin_menu() {
@@ -217,6 +218,11 @@ class EventAdmin {
     }
 
     public function enqueue_admin_scripts($hook) {
+        // Only load on event admin pages
+        if (strpos($hook, 'event-admin') === false && strpos($hook, 'event-registrations') === false && strpos($hook, 'event-past') === false && strpos($hook, 'event-emails') === false) {
+            return;
+        }
+        
         wp_enqueue_media(); // Enqueue the WordPress Media Uploader
         $screen = get_current_screen();
         $items_per_page = 10; // Default value
@@ -336,58 +342,94 @@ class EventAdmin {
             'thumbnail_url' => isset($_POST['thumbnail_url']) ? sanitize_text_field($_POST['thumbnail_url']) : null,
             'publish_date' => !empty($_POST['publish_date']) ? sanitize_text_field($_POST['publish_date']) : null,
             'unpublish_date' => !empty($_POST['unpublish_date']) ? sanitize_text_field($_POST['unpublish_date']) : null,
-            'pricing_options' => isset($_POST['pricing_options']) ? maybe_serialize($_POST['pricing_options']) : null,
-            'goods_services' => isset($_POST['goods_services']) ? maybe_serialize($_POST['goods_services']) : null,
-            'payment_methods' => isset($_POST['payment_methods']) ? maybe_serialize($_POST['payment_methods']) : null
+            'pricing_description' => isset($_POST['pricing_description']) ? wp_kses_post($_POST['pricing_description']) : '',
+            'goods_services_description' => isset($_POST['goods_services_description']) ? wp_kses_post($_POST['goods_services_description']) : '',
+            'payment_methods' => isset($_POST['payment_methods']) ? maybe_serialize($_POST['payment_methods']) : null,
+            'payment_methods_description' => isset($_POST['payment_methods_description']) ? wp_kses_post($_POST['payment_methods_description']) : '',
+            'collect_phone' => isset($_POST['collect_phone']) ? 1 : 0,
+            'collect_company' => isset($_POST['collect_company']) ? 1 : 0,
+            'collect_address' => isset($_POST['collect_address']) ? 1 : 0,
+            'comment_fields' => isset($_POST['comment_fields_json']) ? wp_unslash($_POST['comment_fields_json']) : null
         );
 
-        if (isset($_POST['payment_methods']) && is_array($_POST['payment_methods'])) {
-            $payment_methods = array_map(function ($method) {
+        // Handle pricing_options - CRITICAL: Only set on INSERT or if explicitly provided
+        if (isset($_POST['pricing_options']) && is_array($_POST['pricing_options'])) {
+            $pricing_options = array_values(array_map(function ($option) {
                 return [
-                    'type' => sanitize_text_field($method['type']),
-                    'description' => sanitize_text_field($method['description']),
-                    'link' => isset($method['link']) ? esc_url_raw($method['link']) : '',
-                    'transfer_details' => isset($method['transfer_details']) ? sanitize_textarea_field($method['transfer_details']) : '',
+                    'name' => sanitize_text_field($option['name'] ?? ''),
+                    'price' => floatval($option['price'] ?? 0),
                 ];
-            }, $_POST['payment_methods']);
-
-            $event_data['payment_methods'] = maybe_serialize($payment_methods);
+            }, $_POST['pricing_options']));
+            $event_data['pricing_options'] = maybe_serialize($pricing_options);
+        } elseif (!isset($_POST['event_id'])) {
+            // New event - set to null if not provided
+            $event_data['pricing_options'] = null;
         }
+        // For UPDATE: if pricing_options not in POST, don't include it in event_data to preserve existing value
+
+        // Handle goods_services - CRITICAL: Only set on INSERT or if explicitly provided
+        if (isset($_POST['goods_services']) && is_array($_POST['goods_services'])) {
+            $goods_services = array_values(array_map(function ($service) {
+                return [
+                    'name' => sanitize_text_field($service['name'] ?? ''),
+                    'price' => floatval($service['price'] ?? 0),
+                    'limit' => intval($service['limit'] ?? 0),
+                ];
+            }, $_POST['goods_services']));
+            $event_data['goods_services'] = maybe_serialize($goods_services);
+        } elseif (!isset($_POST['event_id'])) {
+            // New event - set to null if not provided
+            $event_data['goods_services'] = null;
+        }
+        // For UPDATE: if goods_services not in POST, don't include it in event_data to preserve existing value
 
         // Handle NULL values for publish_date and unpublish_date
         if (empty($event_data['publish_date'])) {
             $event_data['publish_date'] = null;
         }
-        if (empty($event_data['unpublish_date'])) {
-            $event_data['unpublish_date'] = null;
-        }
-
-        $data_format = array(
-            '%s', // event_name
-            '%s', // event_date
-            '%s', // event_time
-            '%s', // event_end_date
-            '%s', // event_end_time
-            '%s', // location_name
-            '%s', // location_link
-            '%s', // description
-            '%d', // guest_capacity
-            '%d', // max_guests_per_registration
-            '%s', // admin_email
-            '%d', // member_only
-            '%d', // by_lottery
-            '%d', // has_waiting_list
-            '%d', // external_registration
-            '%s', // external_registration_url
-            '%s', // external_registration_text
-            '%s', // custom_email_template
-            '%s', // thumbnail_url
-            '%s', // publish_date
-            '%s', // unpublish_date
-            '%s', // pricing_options
-            '%s', // goods_services
-            '%s'  // payment_methods
+        // Build format array dynamically based on actual $event_data keys
+        // This ensures format array matches the order of data when using wpdb->update/insert
+        $data_format = array();
+        $field_formats = array(
+            'event_name' => '%s',
+            'event_date' => '%s',
+            'event_time' => '%s',
+            'event_end_date' => '%s',
+            'event_end_time' => '%s',
+            'location_name' => '%s',
+            'location_link' => '%s',
+            'description' => '%s',
+            'guest_capacity' => '%d',
+            'max_guests_per_registration' => '%d',
+            'admin_email' => '%s',
+            'member_only' => '%d',
+            'by_lottery' => '%d',
+            'has_waiting_list' => '%d',
+            'external_registration' => '%d',
+            'external_registration_url' => '%s',
+            'external_registration_text' => '%s',
+            'custom_email_template' => '%s',
+            'thumbnail_url' => '%s',
+            'publish_date' => '%s',
+            'unpublish_date' => '%s',
+            'pricing_description' => '%s',
+            'goods_services_description' => '%s',
+            'payment_methods' => '%s',
+            'payment_methods_description' => '%s',
+            'pricing_options' => '%s',
+            'goods_services' => '%s',
+            'collect_phone' => '%d',
+            'collect_company' => '%d',
+            'collect_address' => '%d',
+            'comment_fields' => '%s'
         );
+        
+        // Build format array with ONLY the keys that are actually in $event_data
+        foreach ($event_data as $key => $value) {
+            if (isset($field_formats[$key])) {
+                $data_format[] = $field_formats[$key];
+            }
+        }
 
         if (isset($_POST['event_id'])) {
             // Update existing event
@@ -398,35 +440,6 @@ class EventAdmin {
                 $data_format,
                 array('%d')
             );
-
-            // Process Goods/Service Options
-            if (isset($_POST['goods_services']) && is_array($_POST['goods_services'])) {
-                $goods_services = array_map(function ($item) {
-                    return [
-                        'name' => sanitize_text_field($item['name']),
-                        'price' => floatval($item['price']),
-                        'limit' => intval($item['limit']),
-                    ];
-                }, $_POST['goods_services']);
-
-                // Serialize and save to the database
-                $wpdb->update(
-                    "{$wpdb->prefix}sct_events",
-                    ['goods_services' => maybe_serialize($goods_services)],
-                    ['id' => intval($_POST['event_id'])],
-                    ['%s'],
-                    ['%d']
-                );
-            } else {
-                // If no goods/services are provided, set the column to NULL
-                $wpdb->update(
-                    "{$wpdb->prefix}sct_events",
-                    ['goods_services' => null],
-                    ['id' => intval($_POST['event_id'])],
-                    ['%s'],
-                    ['%d']
-                );
-            }
         } else {
             // Insert new event
             $result = $wpdb->insert(
@@ -985,19 +998,39 @@ class EventAdmin {
             $this->save_sct_settings();
         }
 
-        // Get current settings
-        $sct_settings = get_option('event_admin_settings', array(
-            'event_registration_page' => get_option('event_registration_page'),
-            'event_management_page' => get_option('event_management_page'),
-            'admin_email' => get_option('admin_email'),
-            'currency' => get_option('currency'),
-            'currency_symbol' => get_option('currency_symbol'),
-            'currency_format' => get_option('currency_format'),
+        // Get current settings with proper defaults
+        $sct_settings = get_option('event_admin_settings', []);
+        
+        // Ensure all required keys exist with proper defaults
+        if (!is_array($sct_settings)) {
+            $sct_settings = [];
+        }
+        
+        $defaults = array(
+            'event_registration_page' => 0,
+            'event_management_page' => 0,
+            'admin_email' => get_bloginfo('admin_email'),
+            'currency' => 'USD',
+            'currency_symbol' => '$',
+            'currency_format' => 'symbol_before',
             'notification_subject' => 'New Event Registration: {event_name}',
             'notification_template' => $this->get_default_notification_template(),
             'confirmation_subject' => 'Registration Confirmation: {event_name}',
-            'confirmation_template' => $this->get_default_confirmation_template()
-        ));
+            'confirmation_template' => $this->get_default_confirmation_template(),
+            'start_of_week' => 1,
+            'github_access_token' => ''
+        );
+        
+        // Merge with defaults, but keep existing values
+        $sct_settings = array_merge($defaults, $sct_settings);
+        
+        // Clean up any corrupted values (like error messages that got saved)
+        if (strpos($sct_settings['currency_symbol'], 'Warning') !== false) {
+            $sct_settings['currency_symbol'] = '$';
+        }
+        if (strpos($sct_settings['currency_format'], 'Warning') !== false) {
+            $sct_settings['currency_format'] = 'symbol_before';
+        }
 
         include EVENT_ADMIN_PATH . 'admin/views/settings.php';
     }
@@ -1160,6 +1193,11 @@ class EventAdmin {
             // Pricing options columns
             if ($has_pricing_options) {
                 foreach ($pricing_options as $index => $option) {
+                    // Ensure $option is an array with required keys
+                    if (!is_array($option)) {
+                        $row[] = 0;
+                        continue;
+                    }
                     $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
                     $row[] = $count;
                     $price = isset($option['price']) ? floatval($option['price']) : 0;
@@ -1170,6 +1208,11 @@ class EventAdmin {
             // Goods/services columns
             if ($has_goods_services) {
                 foreach ($goods_services_options as $index => $service) {
+                    // Ensure $service is an array with required keys
+                    if (!is_array($service)) {
+                        $row[] = 0;
+                        continue;
+                    }
                     $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
                     $row[] = $count;
                     $price = isset($service['price']) ? floatval($service['price']) : 0;
@@ -1502,6 +1545,12 @@ class EventAdmin {
         $goods_services = isset($_POST['goods_services']) ? $_POST['goods_services'] : null;
         $guest_count = isset($_POST['guest_count']) ? intval($_POST['guest_count']) : 0;
 
+        // Validate required fields
+        if (empty($name) || empty($email)) {
+            wp_send_json_error(array('message' => 'Name and email are required.'));
+            return;
+        }
+
         // Process guest details
         $processed_guest_details = array();
         if (!empty($guest_details)) {
@@ -1552,7 +1601,12 @@ class EventAdmin {
         if ($result) {
             wp_send_json_success(array('message' => 'Registration added successfully.'));
         } else {
-            wp_send_json_error(array('message' => 'Failed to add registration.'));
+            // Check if the error is a duplicate entry
+            if ($wpdb->last_error && strpos($wpdb->last_error, 'Duplicate entry') !== false) {
+                wp_send_json_error(array('message' => 'A registration with this email already exists for this event.'));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to add registration.'));
+            }
         }
     }
 
@@ -1684,10 +1738,13 @@ class EventAdmin {
         $pricing_options = $event ? maybe_unserialize($event->pricing_options) : [];
         $goods_services_options = $event ? maybe_unserialize($event->goods_services) : [];
 
+        // Get currency settings from global settings
+        $sct_settings = get_option('event_admin_settings', []);
+        $currency_symbol = isset($sct_settings['currency_symbol']) ? $sct_settings['currency_symbol'] : '$';
+        $currency_format = isset($sct_settings['currency_format']) ? intval($sct_settings['currency_format']) : 2;
+
         // Calculate total price
         $total_price = 0;
-        $currency_symbol = isset($event->currency_symbol) ? $event->currency_symbol : '';
-        $currency_format = isset($event->currency_format) ? intval($event->currency_format) : 2;
 
         ob_start();
         ?>
@@ -1701,6 +1758,10 @@ class EventAdmin {
         // Calculate total price for pricing options
         if ($has_pricing) {
             foreach ($pricing_options as $index => $option) {
+                // Ensure $option is an array with required keys
+                if (!is_array($option)) {
+                    continue;
+                }
                 $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
                 $price = isset($option['price']) ? floatval($option['price']) : 0;
                 $total_price += $count * $price;
@@ -1709,6 +1770,10 @@ class EventAdmin {
         // Calculate total price for goods/services
         if ($has_goods) {
             foreach ($goods_services_options as $index => $service) {
+                // Ensure $service is an array with required keys
+                if (!is_array($service)) {
+                    continue;
+                }
                 $count = isset($goods_services[$index]['count']) ? intval($goods_services[$index]['count']) : 0;
                 $price = isset($service['price']) ? floatval($service['price']) : 0;
                 $total_price += $count * $price;
@@ -1732,13 +1797,18 @@ class EventAdmin {
                 </thead>
                 <tbody>
                 <?php foreach ($pricing_options as $index => $option) :
+                    // Ensure $option is an array with required keys
+                    if (!is_array($option)) {
+                        continue;
+                    }
                     $count = isset($guest_details[$index]['count']) ? intval($guest_details[$index]['count']) : 0;
                     $price = isset($option['price']) ? floatval($option['price']) : 0;
                     $subtotal = $count * $price;
                     if ($count == 0) continue;
+                    $option_name = isset($option['name']) ? $option['name'] : '';
                 ?>
                     <tr>
-                        <td><?php echo esc_html($option['name']); ?></td>
+                        <td><?php echo esc_html($option_name); ?></td>
                         <td><?php echo $count; ?></td>
                         <td><?php echo esc_html($currency_symbol) . ' ' . number_format($price, $currency_format); ?></td>
                         <td><?php echo esc_html($currency_symbol) . ' ' . number_format($subtotal, $currency_format); ?></td>
@@ -1804,6 +1874,34 @@ class EventAdmin {
             <p><strong>Payment Option:</strong> <?php echo $selected_payment ? $selected_payment : esc_html($registration->payment_method); ?></p>
 
         <?php endif; ?>
+        
+        <!-- Display Comment Fields -->
+        <?php if (!empty($registration->comments)):
+            $comments_data = maybe_unserialize($registration->comments);
+            if (!empty($comments_data) && is_array($comments_data)):
+                $comment_fields = $event ? json_decode($event->comment_fields, true) : [];
+        ?>
+        <hr style="margin: 15px 0;">
+        <h4>Additional Information</h4>
+        <?php foreach ($comments_data as $field_id => $value):
+            // Find field definition
+            $field_label = $field_id;
+            if (!empty($comment_fields)) {
+                foreach ($comment_fields as $field) {
+                    if ($field['id'] === $field_id) {
+                        $field_label = $field['label'];
+                        break;
+                    }
+                }
+            }
+        ?>
+        <p>
+            <strong><?php echo esc_html($field_label); ?>:</strong><br>
+            <?php echo nl2br(esc_html(is_array($value) ? implode(', ', $value) : $value)); ?>
+        </p>
+        <?php endforeach; ?>
+        <?php endif; endif; ?>
+        
         <?php
         $html = ob_get_clean();
 
@@ -1857,6 +1955,40 @@ class EventAdmin {
         } else {
             wp_send_json_error(array('message' => 'GitHub updater not available.'));
         }
+    }
+
+    public function get_event_comment_fields() {
+        // Read-only request - no strict nonce verification needed
+        // The real nonce verification happens on save_event
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Unauthorized'));
+            return;
+        }
+
+        if (!isset($_POST['event_id'])) {
+            wp_send_json_error(array('message' => 'Event ID not provided'));
+            return;
+        }
+
+        global $wpdb;
+        $event_id = intval($_POST['event_id']);
+        
+        $event = $wpdb->get_row($wpdb->prepare(
+            "SELECT comment_fields FROM {$wpdb->prefix}sct_events WHERE id = %d",
+            $event_id
+        ));
+
+        // Return empty array if event doesn't exist or has no comment fields
+        $fields = array();
+        if ($event && !empty($event->comment_fields)) {
+            $decoded = json_decode($event->comment_fields, true);
+            if (is_array($decoded)) {
+                $fields = $decoded;
+            }
+        }
+        
+        wp_send_json_success(array('fields' => $fields));
     }
 } // End Class
 
@@ -2008,4 +2140,5 @@ function copy_event_by_name() {
     }
 }
 add_action('wp_ajax_copy_event_by_name', 'copy_event_by_name');
+
 

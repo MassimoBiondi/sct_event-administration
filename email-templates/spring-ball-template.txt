@@ -1,0 +1,71 @@
+SPRING BALL - REGISTRATION CONFIRMATION
+===============================================================
+
+Dear {{attendee_name}},
+
+Thank you for your registration for the Spring Ball. We are delighted to welcome you to this elegant evening hosted by the Japan Swiss Society.
+
+---------------------------------------------------------------
+EVENT DETAILS
+---------------------------------------------------------------
+
+Event:                 {{event_title}}
+Date:                  {{event_date}}
+Time:                  {{event_time}}
+Location:              {{location_name}}
+Number of Guests:      {{attendee_guest_count}}
+
+---------------------------------------------------------------
+REGISTRATION CONFIRMATION
+---------------------------------------------------------------
+
+Registration Number:   {{registration_id}}
+Registration Date:     {{registration_date}}
+Company Name:          {{company_name}}
+
+---------------------------------------------------------------
+YOUR PREFERENCES
+---------------------------------------------------------------
+
+Whole Table Booking:   {{additional_field_1}}
+Seating Preferences:   {{additional_field_2}}
+
+---------------------------------------------------------------
+PRICING & PAYMENT
+---------------------------------------------------------------
+
+{pricing_overview}
+
+{payment_method_details}
+
+---------------------------------------------------------------
+IMPORTANT INFORMATION
+---------------------------------------------------------------
+
+Please arrive by {{event_time}} to allow time for check-in and cocktails. 
+Formal attire is requested. We look forward to an unforgettable 
+evening celebrating spring with the Japan Swiss Society community.
+
+---------------------------------------------------------------
+MANAGE YOUR REGISTRATION
+---------------------------------------------------------------
+
+To view or modify your registration details, please visit:
+{{reservation_link}}
+
+---------------------------------------------------------------
+QUESTIONS?
+---------------------------------------------------------------
+
+If you have any questions regarding your reservation, please do not 
+hesitate to contact us. We are here to assist you.
+
+---------------------------------------------------------------
+
+This is an automated email. Please do not reply directly to this address.
+
+{{website_name}}
+{{website_url}}
+© {{current_year}} Japan Swiss Society. All rights reserved.
+
+===============================================================

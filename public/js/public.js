@@ -33,10 +33,19 @@ jQuery(document).ready(function($) {
 
         submitButton.prop('disabled', true).text('Submitting...');
 
+        // Serialize form data and ensure unchecked checkboxes in goods_services are included with value 0
+        let formData = form.serialize();
+        
+        // Find all unchecked goods_services checkboxes and add them with value 0
+        form.find('input[name^="goods_services"][type="checkbox"]:not(:checked)').each(function() {
+            const name = $(this).attr('name');
+            formData += '&' + encodeURIComponent(name) + '=' + encodeURIComponent('0');
+        });
+
         $.ajax({
             url: eventPublic.ajaxurl,
             type: 'POST',
-            data: form.serialize(),
+            data: formData,
             dataType: 'json',
             success: function (response) {
                 if (response.success) {
@@ -127,12 +136,19 @@ jQuery(document).ready(function($) {
 
     // Retrieve currency settings from the HTML
     const currencySymbol = $('#total-price').data('currency-symbol') || '$';
-    // const currencyFormat = parseInt($('#total-price').data('currency-format'), 10) || 2;
     const currencyFormat = $('#total-price').data('currency-format') === 0 ? 0 : (parseInt($('#total-price').data('currency-format'), 10) || 2);
 
-    // Function to format currency
+    // Function to format currency with thousands separator
     function formatCurrency(amount) {
-        return currencySymbol + amount.toFixed(currencyFormat);
+        // Use toFixed to get the right number of decimals
+        let fixed = parseFloat(amount).toFixed(currencyFormat);
+        // Split into integer and decimal parts
+        let parts = fixed.split('.');
+        // Add thousands separator to integer part
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Join back together
+        let formatted = parts.join('.');
+        return currencySymbol + formatted;
     }
 
     // Function to update the pricing overview

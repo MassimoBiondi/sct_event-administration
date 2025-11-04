@@ -45,10 +45,6 @@ class SCT_Event_List_Block {
                         'type' => 'boolean',
                         'default' => true,
                     ),
-                    'columns' => array(
-                        'type' => 'number',
-                        'default' => 1,
-                    ),
                 ),
             )
         );
@@ -84,10 +80,6 @@ class SCT_Event_List_Block {
         $show_description = isset($attributes['showDescription']) ? (bool) $attributes['showDescription'] : true;
         $show_location = isset($attributes['showLocation']) ? (bool) $attributes['showLocation'] : true;
         $show_date = isset($attributes['showDate']) ? (bool) $attributes['showDate'] : true;
-        $columns = isset($attributes['columns']) ? intval($attributes['columns']) : 1;
-        
-        // Validate columns (1-4)
-        $columns = max(1, min(4, $columns));
         
         // Build query
         $table = $wpdb->prefix . 'sct_events';
@@ -123,14 +115,64 @@ class SCT_Event_List_Block {
             return '<div class="sct-events-list-block"><p>' . esc_html__('No upcoming events.', 'sct-event-administration') . '</p></div>';
         }
         
-        $output = '<div class="sct-events-list-block sct-events-columns-' . intval($columns) . '">';
-        $output .= '<div class="sct-events-grid">';
+        $output = '<div class="sct-events-list-block">';
+        $event_count = count($events);
         
-        foreach ($events as $event) {
-            $output .= $this->render_event_item($event, $show_description, $show_location, $show_date);
+        if ($event_count > 3) {
+            // Use slider for more than 3 events
+            $output .= '<div class="sct-events-slider-container uk-position-relative">';
+            $output .= '<div uk-slider="center: false; finite: true; velocity: 1">';
+            
+            // Slider Navigation
+            $output .= '<div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom">';
+            $output .= '<div class="slider-navigation">';
+            $output .= '<a class="uk-slidenav-previous" href uk-slidenav-previous uk-slider-item="previous"></a>';
+            $output .= '<a class="uk-slidenav-next" href uk-slidenav-next uk-slider-item="next"></a>';
+            $output .= '</div>';
+            $output .= '<div class="slider-info">';
+            $output .= '<span class="uk-text-meta">' . sprintf(esc_html__('Showing %d events', 'sct-event-administration'), count($events)) . '</span>';
+            $output .= '</div>';
+            $output .= '</div>';
+            
+            $output .= '<div class="uk-slider-container">';
+            $output .= '<ul class="sct-events-grid uk-slider-items uk-child-width-1-3@m uk-child-width-1-2@s uk-child-width-1-1 uk-grid uk-grid-match" uk-grid>';
+            
+            foreach ($events as $event) {
+                $output .= '<li>';
+                $output .= $this->render_event_item($event, $show_description, $show_location, $show_date);
+                $output .= '</li>';
+            }
+            
+            $output .= '</ul>';
+            $output .= '</div>';
+            
+            // Dot Navigation
+            $output .= '<ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-top"></ul>';
+            
+            $output .= '</div>';
+            $output .= '</div>';
+        } else {
+            // Use grid for 3 or fewer events
+            // Determine width class based on event count
+            if ($event_count === 1 || $event_count === 2) {
+                $width_class = 'uk-child-width-1-2';
+            } else {
+                // Exactly 3 events
+                $width_class = 'uk-child-width-1-3';
+            }
+            
+            $output .= '<div class="sct-events-grid-container">';
+            $output .= '<div class="sct-events-grid ' . $width_class . '" uk-grid="masonry: false" uk-height-match="target: > .sct-event-item">';
+            
+            foreach ($events as $event) {
+                $output .= $this->render_event_item($event, $show_description, $show_location, $show_date);
+            }
+            
+            $output .= '</div>';
+            $output .= '</div>';
         }
         
-        $output .= '</div></div>';
+        $output .= '</div>';
         
         return $output;
     }
@@ -193,17 +235,17 @@ class SCT_Event_List_Block {
         }
         $registration_url = get_permalink($registration_page_id);
         
-        $output = '<div class="sct-event-item">';
+        $output = '<div class="sct-event-item uk-card uk-card-default">';
         
         // Thumbnail
         if ($thumbnail) {
-            $output .= '<div class="sct-event-thumbnail">';
+            $output .= '<div class="uk-card-media-top">';
             $output .= '<img src="' . esc_url($thumbnail) . '" alt="' . esc_attr($event->event_name) . '" />';
             $output .= '</div>';
         }
         
         // Event content wrapper
-        $output .= '<div class="sct-event-content">';
+        $output .= '<div class="uk-card-body">';
         
         // Event title
         $output .= '<h3 class="sct-event-title">';
@@ -241,7 +283,7 @@ class SCT_Event_List_Block {
             $output .= '</div>';
         }
         
-        $output .= '</div><!-- sct-event-content -->';
+        $output .= '</div><!-- uk-card-body -->';
         
         // Capacity status notices (moved above button for better visibility)
         if ($is_fully_booked) {

@@ -28,13 +28,16 @@ jQuery(document).ready(function($) {
             });
         }
 
-        setTimeout(function() {
-            if (notice.closest('body').length > 0) { 
-                 notice.fadeOut(function() {
-                    $(this).remove();
-                });
-            }
-        }, 5000); 
+        // Only auto-dismiss success messages; keep error/warning messages until manually dismissed
+        if (type === 'success') {
+            setTimeout(function() {
+                if (notice.closest('body').length > 0) { 
+                     notice.fadeOut(function() {
+                        $(this).remove();
+                    });
+                }
+            }, 5000);
+        }
     }
 
     $('#copy-event-button').on('click', function () {
@@ -907,6 +910,7 @@ jQuery(document).ready(function($) {
         const form = $(this);
         const submitButton = form.find('button[type="submit"]');
         const originalButtonText = submitButton.text();
+        const modal = document.getElementById('add-registration-modal');
 
         submitButton.prop('disabled', true).text('Adding...');
 
@@ -917,16 +921,21 @@ jQuery(document).ready(function($) {
             success: function (response) {
                 if (response.success) {
                     showAdminNotice('Registration added successfully.', 'success');
-                    $('#add-registration-modal').hide(); 
-                    location.reload(); 
+                    // Close the modal - trigger the close button
+                    const closeBtn = $('#add-registration-modal .uk-modal-close-default');
+                    if (closeBtn.length > 0) {
+                        closeBtn.click();
+                    }
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
                 } else {
                     showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
+                    submitButton.prop('disabled', false).text(originalButtonText);
                 }
             },
             error: function (xhr, status, error) {
                 showAdminNotice('Error adding registration: ' + error, 'error');
-            },
-            complete: function () {
                 submitButton.prop('disabled', false).text(originalButtonText);
             }
         });
@@ -1314,7 +1323,7 @@ jQuery(document).ready(function($) {
         $('#pricing-options-container .pricing-option').each(function (index) {
             $(this).find('input[name^="pricing_options"]').each(function () {
                 const name = $(this).attr('name');
-                const updatedName = name.replace(/\[\d+\]/, `[${index}]`);
+                const updatedName = name.replace(/pricing_options\[\d+\]/, `pricing_options[${index}]`);
                 $(this).attr('name', updatedName);
             });
         });
@@ -1324,7 +1333,7 @@ jQuery(document).ready(function($) {
         $('#goods-services-container .goods-service-option').each(function (index) {
             $(this).find('input[name^="goods_services"]').each(function () {
                 const name = $(this).attr('name');
-                const updatedName = name.replace(/\[\d+\]/, `[${index}]`);
+                const updatedName = name.replace(/goods_services\[\d+\]/, `goods_services[${index}]`);
                 $(this).attr('name', updatedName);
             });
         });
@@ -1352,6 +1361,9 @@ jQuery(document).ready(function($) {
             success: function (response) {
                 if (response.success) {
                     showAdminNotice('Payment status updated successfully.', 'success');
+                    // Update the class to reflect new status
+                    select.removeClass('status-pending status-paid status-failed');
+                    select.addClass('status-' + newStatus);
                 } else {
                     showAdminNotice(response.data.message || 'Error updating payment status.', 'error');
                 }
@@ -1530,39 +1542,11 @@ jQuery(document).ready(function($) {
         modal.show();
     });
 
-    $(document).on('submit', '#add-registration-form', function (e) {
-        e.preventDefault(); 
-
-        const form = $(this);
-        const submitButton = form.find('button[type="submit"]');
-        const originalButtonText = submitButton.text();
-
-        submitButton.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            url: eventAdmin.ajaxurl, 
-            type: 'POST',
-            data: form.serialize() + '&security=' + eventAdmin.update_registration_nonce, 
-            success: function (response) {
-                if (response.success) {
-                    showAdminNotice('Registration added successfully.', 'success');
-                    $('#add-registration-modal').hide(); 
-                    location.reload(); 
-                } else {
-                    showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
-                }
-            },
-            error: function (xhr, status, error) {
-                showAdminNotice('Error adding registration: ' + error, 'error');
-            },
-            complete: function () {
-                submitButton.prop('disabled', false).text(originalButtonText);
-            }
-        });
-    });
-
     $(document).on('click', '#add-registration-modal .cancel-registration', function() {
-        $(this).closest('.modal').hide();
+        const closeBtn = $('#add-registration-modal .uk-modal-close-default');
+        if (closeBtn.length > 0) {
+            closeBtn.click();
+        }
     });
 
     $(document).on('click', '.select-winners', function() {
@@ -1775,7 +1759,7 @@ jQuery(document).ready(function($) {
     });
 
     $(document).on('click', '.cancel-registration', function () {
-        $('#add-registration-modal').hide();
+        const closeBtn = $('#add-registration-modal .uk-modal-close-default'); if (closeBtn.length > 0) { closeBtn.click(); }
     });
 
     $('.wp-list-table tbody tr').each(function () {
@@ -1819,49 +1803,6 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.remove-payment-method', function () {
         $(this).closest('.payment-method').remove();
     });
-
-
-
-
-
-    $(document).on('click', '#add-pricing-option', function () {
-        const index = $('#pricing-options-container .pricing-option').length;
-        $('#pricing-options-container').append(`
-            <div class="pricing-option">
-                <input type="text" name="pricing_options[${index}][name]" placeholder="Category Name" required>
-                <input type="number" name="pricing_options[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
-                <button type="button" class="remove-pricing-option button">Remove</button>
-            </div>
-        `);
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '.remove-pricing-option', function () {
-        $(this).closest('.pricing-option').remove();
-        reindexPricingOptions(); 
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '#add-goods-service-option', function () {
-        const index = $('#goods-services-container .goods-service-option').length;
-        $('#goods-services-container').append(`
-            <div class="goods-service-option">
-                <input type="text" name="goods_services[${index}][name]" placeholder="Item Name" required>
-                <input type="number" name="goods_services[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
-                <input type="number" name="goods_services[${index}][limit]" placeholder="Limit (0 for unlimited)" min="0">
-                <button type="button" class="remove-goods-service-option button">Remove</button>
-            </div>
-        `);
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '.remove-goods-service-option', function () {
-        $(this).closest('.goods-service-option').remove();
-        reindexGoodsServices(); 
-        togglePaymentMethods(); 
-    });
-
-
     togglePaymentMethods();
 
     $(document).on('change', '.change-payment-status', function () {
@@ -1884,6 +1825,9 @@ jQuery(document).ready(function($) {
             success: function (response) {
                 if (response.success) {
                     showAdminNotice('Payment status updated successfully.', 'success');
+                    // Update the class to reflect new status
+                    select.removeClass('status-pending status-paid status-failed');
+                    select.addClass('status-' + newStatus);
                 } else {
                     showAdminNotice(response.data.message || 'Error updating payment status.', 'error');
                 }
@@ -2048,41 +1992,6 @@ jQuery(document).ready(function($) {
         modal.show();
     });
 
-    $(document).on('submit', '#add-registration-form', function (e) {
-        e.preventDefault(); 
-
-        const form = $(this);
-        const submitButton = form.find('button[type="submit"]');
-        const originalButtonText = submitButton.text();
-
-        submitButton.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            url: eventAdmin.ajaxurl, 
-            type: 'POST',
-            data: form.serialize() + '&security=' + eventAdmin.update_registration_nonce, 
-            success: function (response) {
-                if (response.success) {
-                    showAdminNotice('Registration added successfully.', 'success');
-                    $('#add-registration-modal').hide(); 
-                    location.reload(); 
-                } else {
-                    showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
-                }
-            },
-            error: function (xhr, status, error) {
-                showAdminNotice('Error adding registration: ' + error, 'error');
-            },
-            complete: function () {
-                submitButton.prop('disabled', false).text(originalButtonText);
-            }
-        });
-    });
-
-    $(document).on('click', '#add-registration-modal .cancel-registration', function() {
-        $(this).closest('.modal').hide();
-    });
-
     $(document).on('click', '.select-winners', function() {
         var eventId = $(this).data('event-id');
         $('#select_winners_event_id').val(eventId);
@@ -2293,7 +2202,7 @@ jQuery(document).ready(function($) {
     });
 
     $(document).on('click', '.cancel-registration', function () {
-        $('#add-registration-modal').hide();
+        const closeBtn = $('#add-registration-modal .uk-modal-close-default'); if (closeBtn.length > 0) { closeBtn.click(); }
     });
 
     $('.wp-list-table tbody tr').each(function () {
@@ -2339,47 +2248,6 @@ jQuery(document).ready(function($) {
     });
 
 
-    $(document).on('click', '#add-pricing-option', function () {
-        const index = $('#pricing-options-container .pricing-option').length;
-        $('#pricing-options-container').append(`
-            <div class="pricing-option">
-                <input type="text" name="pricing_options[${index}][name]" placeholder="Category Name" required>
-                <input type="number" name="pricing_options[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
-                <button type="button" class="remove-pricing-option button">Remove</button>
-            </div>
-        `);
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '.remove-pricing-option', function () {
-        $(this).closest('.pricing-option').remove();
-        reindexPricingOptions(); 
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '#add-goods-service-option', function () {
-        const index = $('#goods-services-container .goods-service-option').length;
-        $('#goods-services-container').append(`
-            <div class="goods-service-option">
-                <input type="text" name="goods_services[${index}][name]" placeholder="Item Name" required>
-                <input type="number" name="goods_services[${index}][price]" placeholder="Price (e.g., 10.50)" step="0.01" min="0" required>
-                <input type="number" name="goods_services[${index}][limit]" placeholder="Limit (0 for unlimited)" min="0">
-                <button type="button" class="remove-goods-service-option button">Remove</button>
-            </div>
-        `);
-        togglePaymentMethods(); 
-    });
-
-    $(document).on('click', '.remove-goods-service-option', function () {
-        $(this).closest('.goods-service-option').remove();
-        reindexGoodsServices(); 
-        togglePaymentMethods(); 
-    });
-
-
-
-    togglePaymentMethods();
-
     $(document).on('change', '.change-payment-status', function () {
         const select = $(this);
         const registrationId = select.data('registration-id');
@@ -2400,6 +2268,9 @@ jQuery(document).ready(function($) {
             success: function (response) {
                 if (response.success) {
                     showAdminNotice('Payment status updated successfully.', 'success');
+                    // Update the class to reflect new status
+                    select.removeClass('status-pending status-paid status-failed');
+                    select.addClass('status-' + newStatus);
                 } else {
                     showAdminNotice(response.data.message || 'Error updating payment status.', 'error');
                 }
@@ -2583,41 +2454,6 @@ jQuery(document).ready(function($) {
         modal.show();
     });
 
-    $(document).on('submit', '#add-registration-form', function (e) {
-        e.preventDefault(); 
-
-        const form = $(this);
-        const submitButton = form.find('button[type="submit"]');
-        const originalButtonText = submitButton.text();
-
-        submitButton.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            url: eventAdmin.ajaxurl, 
-            type: 'POST',
-            data: form.serialize() + '&security=' + eventAdmin.update_registration_nonce, 
-            success: function (response) {
-                if (response.success) {
-                    showAdminNotice('Registration added successfully.', 'success');
-                    $('#add-registration-modal').hide(); 
-                    location.reload(); 
-                } else {
-                    showAdminNotice('Error: ' + (response.data ? response.data.message : 'Unknown error'), 'error');
-                }
-            },
-            error: function (xhr, status, error) {
-                showAdminNotice('Error adding registration: ' + error, 'error');
-            },
-            complete: function () {
-                submitButton.prop('disabled', false).text(originalButtonText);
-            }
-        });
-    });
-
-    $(document).on('click', '#add-registration-modal .cancel-registration', function() {
-        $(this).closest('.modal').hide();
-    });
-
     $(document).on('click', '.select-winners', function() {
         var eventId = $(this).data('event-id');
         $('#select_winners_event_id').val(eventId);
@@ -2827,7 +2663,7 @@ jQuery(document).ready(function($) {
     });
 
     $(document).on('click', '.cancel-registration', function () {
-        $('#add-registration-modal').hide();
+        const closeBtn = $('#add-registration-modal .uk-modal-close-default'); if (closeBtn.length > 0) { closeBtn.click(); }
     });
 
     $('.wp-list-table tbody tr').each(function () {

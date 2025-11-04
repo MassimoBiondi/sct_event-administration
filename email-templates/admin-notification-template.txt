@@ -1,0 +1,78 @@
+================================================================================
+NEW EVENT REGISTRATION - ADMIN NOTIFICATION
+================================================================================
+
+EVENT: {{event_name}}
+Registered on: {{registration_date}}
+
+================================================================================
+REGISTRANT DETAILS
+================================================================================
+
+Name:                    {{name}}
+Email:                   {{email}}
+Phone:                   {{phone}}
+Company:                 {{company_name}}
+Address:                 {{address}}
+City:                    {{city}}
+Postal Code:             {{postal_code}}
+Country:                 {{country}}
+
+================================================================================
+EVENT INFORMATION
+================================================================================
+
+Event Name:              {{event_name}}
+Event Date:              {{event_date}}
+Event Time:              {{event_time}}
+Location:                {{location_name}}
+
+================================================================================
+ATTENDANCE & SELECTIONS
+================================================================================
+
+Number of Guests:        {{guest_count}}
+
+{{pricing_overview}}
+
+{{goods_services_breakdown}}
+
+{{additional_fields}}
+
+================================================================================
+PRICING SUMMARY
+================================================================================
+
+{{pricing_overview}}
+
+================================================================================
+PAYMENT INFORMATION
+================================================================================
+
+Payment Method:          {{payment_method}}
+Payment Status:          {{payment_status}}
+
+{{payment_method_details}}
+
+================================================================================
+COMMENTS & SPECIAL REQUESTS
+================================================================================
+
+{{comments}}
+
+================================================================================
+REGISTRATION MANAGEMENT
+================================================================================
+
+Registration ID:         {{registration_id}}
+Unique Identifier:       {{unique_identifier}}
+
+Manage Registration:     {{reservation_link}}
+
+================================================================================
+
+This is an automated notification from the Event Registration System.
+Please do not reply to this email.
+
+{{website_name}}
+{{website_url}}

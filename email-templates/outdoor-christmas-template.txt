@@ -1,0 +1,82 @@
+OUTDOOR CHRISTMAS AT THE SWISS AMBASSADOR'S RESIDENCE
+Registration Confirmation
+
+================================================================================
+
+Dear {{attendee_name}},
+
+Thank you for your registration for Outdoor Christmas at the Swiss Ambassador's Residence. We are delighted to welcome you to this festive celebration hosted by the Swiss Club Tokyo.
+
+================================================================================
+
+EVENT DETAILS
+================================================================================
+
+Event:               {{event_title}}
+Date:                {{event_date}}
+Time:                {{event_time}}
+Location:            {{location_name}}
+Number of Guests:    {{attendee_guest_count}}
+
+================================================================================
+
+YOUR REGISTRATION
+================================================================================
+
+Registration Number: {{registration_id}}
+Registration Date:   {{registration_date}}
+Your Name:           {{attendee_name}}
+
+================================================================================
+
+ADDITIONAL INFORMATION
+================================================================================
+
+Pricing Overview:
+{pricing_overview}
+
+Payment Method:
+{payment_method_details}
+
+================================================================================
+
+IMPORTANT INFORMATION
+================================================================================
+
+Please arrive by {{event_time}} to join us for this festive outdoor celebration.
+Dress warmly and enjoy seasonal refreshments, festive music, and the magical 
+atmosphere of an outdoor Christmas celebration at the Swiss Ambassador's Residence.
+
+We look forward to celebrating the Christmas season with you and the Swiss Club 
+Tokyo community!
+
+================================================================================
+
+MANAGE YOUR REGISTRATION
+================================================================================
+
+To view or modify your registration details, please visit:
+{{reservation_link}}
+
+================================================================================
+
+QUESTIONS?
+================================================================================
+
+If you have any questions regarding your registration, please do not hesitate to 
+contact us. We are here to assist you and ensure you have a wonderful experience 
+at our event.
+
+================================================================================
+
+This is an automated email. Please do not reply directly to this address. For 
+assistance, please visit our event management page using the link above.
+
+================================================================================
+
+{{website_name}}
+{{website_url}}
+
+© {{current_year}} Swiss Club Tokyo. All rights reserved.
+
+🎄 Wishing you a Merry Christmas and Happy Holidays! 🎄
